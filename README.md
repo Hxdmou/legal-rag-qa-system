@@ -77,14 +77,16 @@ bash start.sh
 
 **方式二：单独启动**
 
-| 系统 | 启动命令 | 访问地址 |
-|------|----------|----------|
-| 🤖 通用RAG | `streamlit run run.py --server.port 7861` | http://localhost:7861 |
-| ⚖️ 法律问答 | `streamlit run legal_qa.py --server.port 7869` | http://localhost:7869 |
-| 🎓 教育学习 | `streamlit run education_qa.py --server.port 7870` | http://localhost:7870 |
-| 🏥 医疗健康 | `streamlit run medical_qa.py --server.port 7871` | http://localhost:7871 |
-| 💰 金融投资 | `streamlit run finance_qa.py --server.port 7872` | http://localhost:7872 |
-| 💻 IT技术 | `streamlit run tech_qa.py --server.port 7873` | http://localhost:7873 |
+| 系统 | 启动命令 | 访问地址 | 是否需要 GPU |
+|------|----------|----------|-------------|
+| 🤖 通用RAG | `streamlit run run.py --server.port 7861` | http://localhost:7861 | ❌ 否（远程API） |
+| ⚖️ 法律问答 | `streamlit run legal_qa.py --server.port 7869` | http://localhost:7869 | ❌ 否（远程API） |
+| 🎓 教育学习 | `streamlit run education_qa.py --server.port 7870` | http://localhost:7870 | ❌ 否（远程API） |
+| 🏥 医疗健康 | `streamlit run medical_qa.py --server.port 7871` | http://localhost:7871 | ❌ 否（远程API） |
+| 💰 金融投资 | `streamlit run finance_qa.py --server.port 7872` | http://localhost:7872 | ❌ 否（远程API） |
+| 💻 IT技术 | `streamlit run tech_qa.py --server.port 7873` | http://localhost:7873 | ❌ 否（远程API） |
+
+> **GPU 说明**: 默认使用远程 LLM API，无需 GPU。如需使用本地模型（如 Llama 3、Qwen 等），建议配备 NVIDIA GPU（显存 ≥ 16GB）以获得更好的推理性能。
 
 ---
 
