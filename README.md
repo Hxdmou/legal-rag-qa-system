@@ -80,7 +80,7 @@ bash start.sh
 | 系统 | 启动命令 | 访问地址 |
 |------|----------|----------|
 | 🤖 通用RAG | `streamlit run run.py --server.port 7861` | http://localhost:7861 |
-| ⚖️ 法律问答 | `streamlit run medical_qa_fixed.py --server.port 7869` | http://localhost:7869 |
+| ⚖️ 法律问答 | `streamlit run legal_qa.py --server.port 7869` | http://localhost:7869 |
 | 🎓 教育学习 | `streamlit run education_qa.py --server.port 7870` | http://localhost:7870 |
 | 🏥 医疗健康 | `streamlit run medical_qa.py --server.port 7871` | http://localhost:7871 |
 | 💰 金融投资 | `streamlit run finance_qa.py --server.port 7872` | http://localhost:7872 |

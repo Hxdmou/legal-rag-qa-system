@@ -142,6 +142,14 @@ def interactive():
                         answer = chain.invoke(prompt)
                         st.markdown(answer)
                         st.session_state.messages.append({"role": "assistant", "content": answer})
+                        
+                        # 添加金融风险提示
+                        st.markdown("""
+                        ---
+                        ⚠️ **投资风险提示**
+                        
+                        ⚠️ 投资有风险，理财需谨慎。本文内容不构成投资建议。
+                        """)
                     except Exception as e:
                         error_msg = f"回答失败: {str(e)}"
                         st.error(error_msg)

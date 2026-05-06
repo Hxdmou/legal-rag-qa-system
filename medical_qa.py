@@ -136,17 +136,25 @@ def interactive():
                 st.markdown(prompt)
 
             with st.chat_message("assistant"):
-                with st.spinner("🏥 正在分析健康信息..."):
-                    try:
-                        chain = llm_chain(st.session_state.vector_store)
-                        answer = chain.invoke(prompt)
-                        st.markdown(answer)
-                        st.session_state.messages.append({"role": "assistant", "content": answer})
-                    except Exception as e:
-                        error_msg = f"回答失败: {str(e)}"
-                        st.error(error_msg)
-                        if 'messages' in st.session_state:
-                            st.session_state.messages.append({"role": "assistant", "content": error_msg})
+                    with st.spinner("🏥 正在分析健康信息..."):
+                        try:
+                            chain = llm_chain(st.session_state.vector_store)
+                            answer = chain.invoke(prompt)
+                            st.markdown(answer)
+                            st.session_state.messages.append({"role": "assistant", "content": answer})
+                            
+                            # 添加医疗免责声明
+                            st.markdown("""
+                            ---
+                            ⚠️ **医疗免责声明**
+                            
+                            🚨 本回答仅供参考，不构成医疗诊断。如有身体不适，请及时就医。
+                            """)
+                        except Exception as e:
+                            error_msg = f"回答失败: {str(e)}"
+                            st.error(error_msg)
+                            if 'messages' in st.session_state:
+                                st.session_state.messages.append({"role": "assistant", "content": error_msg})
 
     with col2:
         st.subheader("📋 系统功能")
