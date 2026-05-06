@@ -188,16 +188,28 @@ streamlit run tech_qa.py --server.port 7873
 
 ```
 legal-rag-qa-system/
-├── run.py                          # 📚 通用 RAG 智能问答系统
-├── medical_qa_fixed.py             # ⚖️ 法律知识问答系统
-├── education_qa.py                 # 🎓 教育知识问答系统
-├── medical_qa.py                   # 🏥 医疗健康问答系统
-├── finance_qa.py                   # 💰 金融知识问答系统
-├── tech_qa.py                      # 💻 IT技术问答系统
-├── rag.py                          # 核心 RAG 模块
-├── 启动RAG系统.bat                 # Windows 一键启动脚本
+├── run.py                          # 📚 通用 RAG 智能问答系统（企业级）
+├── medical_qa_fixed.py             # ⚖️ 法律知识问答系统（企业级）
+├── education_qa.py                 # 🎓 教育知识问答系统（企业级）
+├── medical_qa.py                   # 🏥 医疗健康问答系统（企业级）
+├── finance_qa.py                   # 💰 金融知识问答系统（企业级）
+├── tech_qa.py                      # 💻 IT技术问答系统（企业级）
+├── rag.py                          # 旧版核心 RAG 模块（兼容保留）
+├── 启动RAG系统.bat                 # Windows 一键启动脚本（企业级）
 ├── requirements.txt                # Python 依赖
 ├── legal_knowledge_base/           # 法律知识库文件
+├── config/
+│   └── settings.py                 # 🔧 企业级配置管理
+├── core/
+│   └── rag_engine.py               # 🚀 企业级RAG引擎核心
+├── utils/
+│   ├── logger.py                   # 📝 企业级日志系统
+│   ├── database.py                 # 💾 对话历史与向量存储管理
+│   └── security.py                 # 🔒 企业级安全管理模块
+├── data/                           # 数据存储目录（自动创建）
+│   ├── vector_store/               # 向量存储
+│   ├── chat_history/               # 对话历史
+│   └── logs/                       # 日志文件
 ├── README.md                       # 项目说明文档（本文件）
 ├── demo_screenshot（1）.png        # 演示截图1
 ├── demo_screenshot（2）.png        # 演示截图2

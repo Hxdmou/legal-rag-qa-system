@@ -1,160 +1,237 @@
 import streamlit as st
 import os
 import tempfile
-import json
-from datetime import datetime
-from rag import llm_an, load_multiple_documents, chunk2vector, llm_chain, embeddings
+from core.rag_engine import RAGEngine
+from config.settings import Config, SYSTEM_CONFIGS
+from utils.logger import Logger
+from utils.security import SecurityManager
 
-# 对话历史保存路径
-CHAT_HISTORY_FILE = "chat_history_medical.json"
+# 初始化组件
+rag_engine = RAGEngine()
+security_manager = SecurityManager()
+
+# 医疗领域专业提示词
+MEDICAL_PROMPT = """
+你是一名专业的医疗健康助手，请根据提供的医疗资料回答问题。
+
+规则：
+1. 回答要专业但易懂，避免使用过于晦涩的术语
+2. 如果涉及用药建议，请强调咨询医生的重要性
+3. 如果问题涉及诊断，请建议用户咨询专业医师
+4. 如果不知道答案，直接说"根据现有知识库，无法回答该问题"
+5. 在回答末尾必须添加免责声明
+
+问题：{question}
+上下文：{context}
+
+回答：
+"""
+
+DISCLAIMER = """
+
+⚠️ **医疗免责声明**
+本信息仅供参考，不能替代专业医疗建议。在做出任何医疗决策前，请务必咨询执业医师或其他专业医疗人员。
+"""
 
 def save_uploaded_file(uploaded_file):
+    """保存上传的文件到临时目录"""
     try:
-        suffix = os.path.splitext(uploaded_file.name)[1]
+        sanitized_name = security_manager.sanitize_filename(uploaded_file.name)
+        suffix = os.path.splitext(sanitized_name)[1]
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
             tmp_file.write(uploaded_file.getvalue())
             return tmp_file.name
     except Exception as e:
+        Logger.log_error(f"文件保存失败: {str(e)}", "MedicalQA")
         st.error(f"文件保存失败: {str(e)}")
         return None
 
-def load_chat_history():
-    if os.path.exists(CHAT_HISTORY_FILE):
-        try:
-            with open(CHAT_HISTORY_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except:
-            return []
-    return []
-
-def save_chat_history(history):
-    try:
-        with open(CHAT_HISTORY_FILE, 'w', encoding='utf-8') as f:
-            json.dump(history, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        st.error(f"保存对话历史失败: {str(e)}")
-
-def clear_chat_history():
-    if os.path.exists(CHAT_HISTORY_FILE):
-        os.remove(CHAT_HISTORY_FILE)
-    st.session_state.chat_history = []
-    st.session_state.messages = []
-
 def interactive():
+    """企业级医疗健康问答系统"""
+    config = SYSTEM_CONFIGS["medical"]
+    
     st.set_page_config(
-        page_title="医疗健康问答系统",
-        page_icon="🏥",
-        layout="wide"
+        page_title=f"{config['name']} - 企业级",
+        page_icon=config["icon"],
+        layout="wide",
+        initial_sidebar_state="expanded"
     )
-
-    st.title("🏥 医疗健康问答系统")
-    st.markdown("基于医学知识的智能健康助手，支持上传医学文献、健康指南等资料")
-    st.warning("⚠️ 本系统仅供参考，不能替代专业医生诊断，如有健康问题请及时就医")
-
+    
+    # 企业级样式
+    st.markdown("""
+        <style>
+        .main-header {
+            background: linear-gradient(135deg, #e53935 0%, #ff7043 100%);
+            padding: 2rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+        .main-header h1 {
+            color: white;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .main-header p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.1rem;
+        }
+        .medical-card {
+            background: #ffebee;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid #e53935;
+        }
+        .disclaimer-box {
+            background: #fff3e0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+            border: 1px solid #ffe0b2;
+        }
+        .system-info {
+            background: #e3f2fd;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    # 头部区域
+    st.markdown(f"""
+        <div class="main-header">
+            <h1>{config['icon']} {config['name']}</h1>
+            <p>{config['description']} | 版本: {Config.VERSION}</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
     # 初始化session state
-    if 'messages' not in st.session_state:
-        st.session_state.messages = []
-    if 'chat_history' not in st.session_state:
-        st.session_state.chat_history = load_chat_history()
-    if 'vector_store' not in st.session_state:
-        st.session_state.vector_store = None
-    if 'current_files' not in st.session_state:
-        st.session_state.current_files = []
-
-    # 侧边栏
+    session_keys = ['messages', 'vector_store', 'current_files', 'engine_initialized']
+    for key in session_keys:
+        if key not in st.session_state:
+            st.session_state[key] = [] if key == 'messages' else None
+    
+    # 侧边栏 - 企业级控制面板
     with st.sidebar:
-        st.header("📁 医学资料管理")
+        st.header(f"🏥 医疗系统控制")
+        
+        # 文件上传区域
+        st.markdown("---")
+        st.subheader("📁 医学资料管理")
         
         uploaded_files = st.file_uploader(
-            "上传医学资料（支持多选）",
-            type=['txt', 'pdf', 'xlsx', 'xls'],
+            "上传医学文献/健康指南",
+            type=Config.SUPPORTED_FILE_TYPES,
             accept_multiple_files=True,
-            help="支持医学文献、健康指南、药品说明书等"
+            help=f"支持格式: {', '.join(Config.SUPPORTED_FILE_TYPES)} | 最大 {Config.MAX_FILE_SIZE//(1024*1024)}MB"
         )
-
-        st.markdown("---")
-        st.subheader("或输入本地文件路径")
-        local_file_path = st.text_input(
-            "文件路径",
-            placeholder=r"例如: C:\Users\Documents\医学指南.pdf",
-            help="输入本地文件的完整路径"
-        )
-
-        if uploaded_files or local_file_path:
-            with st.spinner("正在处理医学资料并建立索引..."):
+        
+        if uploaded_files or st.session_state.get('current_files'):
+            with st.spinner("正在处理医学资料..."):
                 file_paths = []
+                
                 if uploaded_files:
                     for uploaded_file in uploaded_files:
-                        tmp_path = save_uploaded_file(uploaded_file)
-                        if tmp_path:
-                            file_paths.append(tmp_path)
-                            st.success(f"✅ 已加载: {uploaded_file.name}")
-
-                if local_file_path and os.path.exists(local_file_path):
-                    file_paths.append(local_file_path)
-                    st.success(f"✅ 已加载本地文件: {os.path.basename(local_file_path)}")
-                elif local_file_path:
-                    st.error(f"❌ 文件不存在: {local_file_path}")
-
+                        if security_manager.check_file_size(uploaded_file.size):
+                            tmp_path = save_uploaded_file(uploaded_file)
+                            if tmp_path:
+                                file_paths.append(tmp_path)
+                                st.success(f"✅ {uploaded_file.name}")
+                        else:
+                            st.error(f"❌ {uploaded_file.name} - 文件过大")
+                
                 if file_paths:
                     try:
-                        docs = load_multiple_documents(file_paths)
-                        if docs:
-                            vector_store = chunk2vector(docs, embeddings)
-                            st.session_state.vector_store = vector_store
-                            st.session_state.current_files = [os.path.basename(p) for p in file_paths]
-                            st.success("🎉 医学资料索引建立成功！")
+                        docs = rag_engine.load_multiple_documents(file_paths)
+                        if st.session_state.get('vector_store'):
+                            rag_engine.vector_store = st.session_state.vector_store
+                            rag_engine.vector_store.add_documents(docs)
                         else:
-                            st.error("❌ 未找到有效内容")
+                            st.session_state.vector_store = rag_engine.build_vector_store(docs)
+                        
+                        st.session_state.current_files.extend([os.path.basename(p) for p in file_paths])
+                        st.session_state.engine_initialized = True
+                        st.success(f"🎉 已添加 {len(docs)} 份医学资料")
+                        Logger.log_info(f"医学资料加载完成，{len(file_paths)}个文件", "MedicalQA")
                     except Exception as e:
-                        st.error(f"处理文件失败: {str(e)}")
-
+                        st.error(f"❌ 处理失败: {str(e)}")
+                        Logger.log_error(f"处理医学资料失败: {str(e)}", "MedicalQA", e)
+        
+        # 系统状态
         st.markdown("---")
-        if st.button("清空对话历史"):
-            clear_chat_history()
-            st.success("对话历史已清空")
-
-        if st.session_state.current_files:
-            st.markdown("### 当前加载的文件")
-            for f in st.session_state.current_files:
-                st.write(f"- {f}")
-
-    # 主聊天区域
-    st.markdown("---")
+        st.subheader("📊 系统状态")
+        if st.session_state.get('engine_initialized'):
+            st.markdown("""
+                <div class="system-info">
+                <strong>✅ 系统状态:</strong> 就绪<br>
+                <strong>📚 已加载资料:</strong> {}<br>
+                <strong>🏥 模式:</strong> 医疗健康问答
+                </div>
+            """.format(len(st.session_state.current_files)), unsafe_allow_html=True)
+        else:
+            st.warning("⚠️ 请先上传医学资料")
+        
+        # 操作按钮
+        st.markdown("---")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🗑️ 清空对话", type="secondary"):
+                st.session_state.messages = []
+        with col2:
+            if st.button("🔄 重置系统", type="secondary"):
+                st.session_state.vector_store = None
+                st.session_state.current_files = []
+                st.session_state.engine_initialized = False
+                st.session_state.messages = []
+                st.rerun()
+    
+    # 医疗免责声明
+    st.markdown("""
+        <div class="disclaimer-box">
+        <strong>⚠️ 重要医疗免责声明</strong>
+        <p>本系统提供的健康信息仅供参考，不能替代专业医疗建议、诊断或治疗。在做出任何医疗决策前，请务必咨询执业医师或其他专业医疗人员。</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    # 聊天区域
     st.header("💬 健康咨询")
     
+    # 显示消息历史
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
-
-    if prompt := st.chat_input("输入您的健康问题..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
+    
+    # 用户输入
+    if prompt := st.chat_input("请输入您的健康问题..."):
+        if not st.session_state.get('engine_initialized'):
+            st.warning("⚠️ 请先上传医学资料")
+            return
         
+        st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
-
+        
         with st.chat_message("assistant"):
-            if st.session_state.vector_store is not None:
-                with st.spinner("正在分析..."):
-                    try:
-                        chain = llm_chain(st.session_state.vector_store)
-                        response = chain.invoke(prompt)
-                        response_with_disclaimer = f"{response}\n\n⚠️ **免责声明**: 以上内容仅供参考，不能替代专业医疗建议。如有健康问题，请及时咨询专业医生。"
-                        st.markdown(response_with_disclaimer)
-                        
-                        st.session_state.messages.append({"role": "assistant", "content": response_with_disclaimer})
-                        
-                        chat_entry = {
-                            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                            "question": prompt,
-                            "answer": response
-                        }
-                        st.session_state.chat_history.append(chat_entry)
-                        save_chat_history(st.session_state.chat_history)
-                    except Exception as e:
-                        st.error(f"回答失败: {str(e)}")
-            else:
-                st.warning("请先上传医学资料")
+            with st.spinner("🏥 正在分析健康资料..."):
+                try:
+                    answer = rag_engine.answer_question(prompt, MEDICAL_PROMPT)
+                    full_answer = answer + DISCLAIMER
+                    st.markdown(full_answer)
+                    st.session_state.messages.append({"role": "assistant", "content": full_answer})
+                    Logger.log_info(f"医疗问答完成: {prompt[:30]}", "MedicalQA")
+                except Exception as e:
+                    error_msg = f"回答失败: {str(e)}"
+                    st.error(error_msg)
+                    st.session_state.messages.append({"role": "assistant", "content": error_msg})
+    
+    # 底部信息
+    st.markdown("---")
+    st.markdown(f"""
+        <div style="text-align: center; color: #666; font-size: 0.9rem;">
+        <strong>{config['icon']} {config['name']}</strong> | 版本 {Config.VERSION} | 仅供健康知识参考
+        </div>
+    """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     interactive()
