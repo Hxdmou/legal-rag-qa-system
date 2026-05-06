@@ -18,7 +18,7 @@ timeout /t 3 /nobreak >nul
 
 rem 启动法律知识问答系统
 echo [2/6] 启动 ⚖️ 法律知识问答系统...
-start "" cmd /k "streamlit run medical_qa_fixed.py --server.port 7869"
+start "" cmd /k "streamlit run legal_qa.py --server.port 7869"
 
 timeout /t 3 /nobreak >nul
 
