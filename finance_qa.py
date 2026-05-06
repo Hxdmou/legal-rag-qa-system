@@ -1,67 +1,49 @@
 import streamlit as st
 import os
 import tempfile
-from core.rag_engine import RAGEngine
+from rag import load_multiple_documents, chunk2vector, llm_chain, embeddings
+from langchain_community.vectorstores import FAISS
 from config.settings import Config, SYSTEM_CONFIGS
-from utils.logger import Logger
-from utils.security import SecurityManager
+from chat_history import save_chat_history, load_chat_history, delete_chat_history, format_conversation
 
-# 初始化组件
-rag_engine = RAGEngine()
-security_manager = SecurityManager()
-
-# 金融领域专业提示词
-FINANCE_PROMPT = """
-你是一名专业的金融投资助手，请根据提供的金融资料回答问题。
-
-规则：
-1. 回答要专业且准确，引用相关金融法规和数据
-2. 如果涉及投资建议，请强调投资有风险
-3. 如果问题涉及具体产品，请说明产品特性和风险等级
-4. 如果不知道答案，直接说"根据现有知识库，无法回答该问题"
-5. 在回答末尾必须添加风险提示
-
-问题：{question}
-上下文：{context}
-
-回答：
-"""
-
-RISK_DISCLOSURE = """
-
-⚠️ **投资风险提示**
-投资有风险，入市需谨慎。本信息仅供参考，不构成任何投资建议。在做出任何投资决策前，请仔细评估自身风险承受能力，并咨询专业投资顾问。
-"""
+SYSTEM_NAME = "finance"
+DEFAULT_INDEX_DIR = "finance_faiss_index"
 
 def save_uploaded_file(uploaded_file):
-    """保存上传的文件到临时目录"""
     try:
-        sanitized_name = security_manager.sanitize_filename(uploaded_file.name)
-        suffix = os.path.splitext(sanitized_name)[1]
+        suffix = os.path.splitext(uploaded_file.name)[1]
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
             tmp_file.write(uploaded_file.getvalue())
             return tmp_file.name
     except Exception as e:
-        Logger.log_error(f"文件保存失败: {str(e)}", "FinanceQA")
         st.error(f"文件保存失败: {str(e)}")
         return None
 
+def load_default_index():
+    """尝试加载预置的知识库索引"""
+    if os.path.exists(DEFAULT_INDEX_DIR):
+        try:
+            vector_store = FAISS.load_local(DEFAULT_INDEX_DIR, embeddings, allow_dangerous_deserialization=True)
+            return vector_store, True
+        except Exception as e:
+            st.warning(f"加载预置索引失败: {str(e)}")
+            return None, False
+    return None, False
+
 def interactive():
-    """企业级金融知识问答系统"""
     config = SYSTEM_CONFIGS["finance"]
-    
+
     st.set_page_config(
-        page_title=f"{config['name']} - 企业级",
+        page_title=f"{config['name']}",
         page_icon=config["icon"],
         layout="wide",
         initial_sidebar_state="expanded"
     )
-    
-    # 企业级样式
+
     st.markdown("""
         <style>
         .main-header {
-            background: linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%);
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
             padding: 2rem;
             border-radius: 12px;
             margin-bottom: 2rem;
@@ -76,162 +58,225 @@ def interactive():
             font-size: 1.1rem;
         }
         .finance-card {
-            background: #e8f5e9;
+            background: #fff8e6;
             border-radius: 8px;
             padding: 1rem;
             margin-bottom: 1rem;
-            border-left: 4px solid #2e7d32;
+            border-left: 4px solid #fa709a;
         }
-        .risk-box {
-            background: #fff3e0;
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-top: 1rem;
-            border: 1px solid #ffe0b2;
-        }
-        .system-info {
-            background: #e3f2fd;
+        .feature-card {
+            background: #fff;
+            border: 1px solid #e0e0e0;
             border-radius: 8px;
             padding: 1rem;
-            margin-top: 1rem;
+            margin-bottom: 0.8rem;
+        }
+        .feature-title {
+            color: #fa709a;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
         }
         </style>
     """, unsafe_allow_html=True)
-    
-    # 头部区域
+
     st.markdown(f"""
         <div class="main-header">
             <h1>{config['icon']} {config['name']}</h1>
             <p>{config['description']} | 版本: {Config.VERSION}</p>
         </div>
     """, unsafe_allow_html=True)
-    
-    # 初始化session state
-    session_keys = ['messages', 'vector_store', 'current_files', 'engine_initialized']
-    for key in session_keys:
-        if key not in st.session_state:
-            st.session_state[key] = [] if key == 'messages' else None
-    
-    # 侧边栏 - 企业级控制面板
-    with st.sidebar:
-        st.header(f"💰 金融系统控制")
-        
-        # 文件上传区域
-        st.markdown("---")
-        st.subheader("📁 金融资料管理")
-        
-        uploaded_files = st.file_uploader(
-            "上传金融法规/理财指南",
-            type=Config.SUPPORTED_FILE_TYPES,
-            accept_multiple_files=True,
-            help=f"支持格式: {', '.join(Config.SUPPORTED_FILE_TYPES)} | 最大 {Config.MAX_FILE_SIZE//(1024*1024)}MB"
-        )
-        
-        if uploaded_files or st.session_state.get('current_files'):
-            with st.spinner("正在处理金融资料..."):
-                file_paths = []
-                
-                if uploaded_files:
-                    for uploaded_file in uploaded_files:
-                        if security_manager.check_file_size(uploaded_file.size):
-                            tmp_path = save_uploaded_file(uploaded_file)
-                            if tmp_path:
-                                file_paths.append(tmp_path)
-                                st.success(f"✅ {uploaded_file.name}")
-                        else:
-                            st.error(f"❌ {uploaded_file.name} - 文件过大")
-                
-                if file_paths:
+
+    # 初始化会话状态
+    if 'messages' not in st.session_state:
+        st.session_state.messages = []
+    if 'vector_store' not in st.session_state:
+        st.session_state.vector_store = None
+    if 'current_files' not in st.session_state:
+        st.session_state.current_files = []
+    if 'engine_initialized' not in st.session_state:
+        st.session_state.engine_initialized = False
+    if 'show_history' not in st.session_state:
+        st.session_state.show_history = False
+
+    # 尝试加载预置索引
+    if not st.session_state.engine_initialized and not st.session_state.vector_store:
+        with st.spinner("🔄 正在加载金融知识库..."):
+            vector_store, success = load_default_index()
+            if success and vector_store:
+                st.session_state.vector_store = vector_store
+                st.session_state.engine_initialized = True
+                st.session_state.current_files = ["金融投资知识库"]
+
+    col1, col2 = st.columns([2, 1])
+
+    with col1:
+        st.markdown("""
+            <div class="finance-card">
+            <strong>� 投资提示</strong>
+            <p>本系统提供的金融信息仅供参考，不能替代专业投资建议。投资有风险，请谨慎决策。</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 💬 金融问答")
+
+        for message in st.session_state.get('messages', []):
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        if prompt := st.chat_input("请输入您的金融问题..."):
+            if not st.session_state.get('engine_initialized'):
+                st.warning("⚠️ 请先上传金融文档或等待知识库加载")
+                return
+
+            if 'messages' not in st.session_state:
+                st.session_state.messages = []
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
+
+            with st.chat_message("assistant"):
+                with st.spinner("💰 正在分析金融信息..."):
                     try:
-                        docs = rag_engine.load_multiple_documents(file_paths)
-                        if st.session_state.get('vector_store'):
-                            rag_engine.vector_store = st.session_state.vector_store
-                            rag_engine.vector_store.add_documents(docs)
-                        else:
-                            st.session_state.vector_store = rag_engine.build_vector_store(docs)
-                        
-                        st.session_state.current_files.extend([os.path.basename(p) for p in file_paths])
-                        st.session_state.engine_initialized = True
-                        st.success(f"🎉 已添加 {len(docs)} 份金融资料")
-                        Logger.log_info(f"金融资料加载完成，{len(file_paths)}个文件", "FinanceQA")
+                        chain = llm_chain(st.session_state.vector_store)
+                        answer = chain.invoke(prompt)
+                        st.markdown(answer)
+                        st.session_state.messages.append({"role": "assistant", "content": answer})
                     except Exception as e:
-                        st.error(f"❌ 处理失败: {str(e)}")
-                        Logger.log_error(f"处理金融资料失败: {str(e)}", "FinanceQA", e)
-        
-        # 系统状态
+                        error_msg = f"回答失败: {str(e)}"
+                        st.error(error_msg)
+                        if 'messages' in st.session_state:
+                            st.session_state.messages.append({"role": "assistant", "content": error_msg})
+
+    with col2:
+        st.subheader("📋 系统功能")
+
+        features = [
+            ("� 金融文档", "支持上传投资报告、理财指南等"),
+            ("💬 智能问答", "基于金融知识的投资问答"),
+            ("💰 投资分析", "提供投资建议和市场分析"),
+            ("📈 行情解读", "解读金融市场行情和趋势"),
+            ("� 历史记录", "对话记录本地存储，随时查看"),
+            ("🔒 隐私保护", "所有数据仅本地处理，保障隐私安全")
+        ]
+
+        for title, desc in features:
+            st.markdown(f"""
+                <div class="feature-card">
+                <div class="feature-title">{title}</div>
+                <p style="color: #666; font-size: 0.9rem;">{desc}</p>
+                </div>
+            """, unsafe_allow_html=True)
+
         st.markdown("---")
         st.subheader("📊 系统状态")
         if st.session_state.get('engine_initialized'):
-            st.markdown("""
-                <div class="system-info">
-                <strong>✅ 系统状态:</strong> 就绪<br>
-                <strong>📚 已加载资料:</strong> {}<br>
-                <strong>💰 模式:</strong> 金融问答
-                </div>
-            """.format(len(st.session_state.current_files)), unsafe_allow_html=True)
+            st.success("✅ 系统就绪")
+            st.info(f"📚 已加载文档: {len(st.session_state.get('current_files', []))}")
         else:
-            st.warning("⚠️ 请先上传金融资料")
-        
-        # 操作按钮
+            st.warning("⚠️ 请先上传金融文档")
+
         st.markdown("---")
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🗑️ 清空对话", type="secondary"):
-                st.session_state.messages = []
-        with col2:
-            if st.button("🔄 重置系统", type="secondary"):
-                st.session_state.vector_store = None
-                st.session_state.current_files = []
-                st.session_state.engine_initialized = False
-                st.session_state.messages = []
+        if st.button("💾 保存当前对话", type="secondary", use_container_width=True):
+            if st.session_state.get('messages'):
+                success = save_chat_history(st.session_state.messages, SYSTEM_NAME)
+                if success:
+                    st.success("✅ 对话已保存")
+                else:
+                    st.error("❌ 保存失败")
+
+        if st.button("📝 查看历史对话", type="secondary", use_container_width=True):
+            st.session_state.show_history = not st.session_state.show_history
+
+        if st.button("🗑️ 清空对话", type="secondary", use_container_width=True):
+            st.session_state.messages = []
+            st.rerun()
+        if st.button("🔄 重置系统", type="secondary", use_container_width=True):
+            st.session_state.vector_store = None
+            st.session_state.current_files = []
+            st.session_state.engine_initialized = False
+            st.session_state.messages = []
+            st.rerun()
+
+    # 历史对话面板
+    if st.session_state.show_history:
+        st.markdown("---")
+        st.subheader("📝 历史对话记录")
+        
+        history = load_chat_history(SYSTEM_NAME)
+        
+        if history:
+            history.reverse()
+            
+            for conv in history:
+                with st.expander(f"📅 {conv['timestamp'][:19]} | {len(conv['messages'])} 条消息"):
+                    st.code(format_conversation(conv), language='text')
+                    
+                    col_save, col_delete = st.columns(2)
+                    with col_save:
+                        if st.button(f"🔄 恢复对话 {conv['id']}", use_container_width=True):
+                            st.session_state.messages = conv['messages'].copy()
+                            st.session_state.show_history = False
+                            st.success("✅ 对话已恢复")
+                            st.rerun()
+                    with col_delete:
+                        if st.button(f"🗑️ 删除 {conv['id']}", use_container_width=True):
+                            delete_chat_history(SYSTEM_NAME, conv['id'])
+                            st.success("✅ 已删除")
+                            st.rerun()
+            
+            if st.button("🗑️ 清空所有历史", type="primary", use_container_width=True):
+                delete_chat_history(SYSTEM_NAME)
+                st.success("✅ 已清空所有历史")
                 st.rerun()
-    
-    # 风险提示
-    st.markdown("""
-        <div class="risk-box">
-        <strong>⚠️ 投资风险提示</strong>
-        <p>投资有风险，入市需谨慎。本系统提供的金融信息仅供参考，不构成任何投资建议。在做出任何投资决策前，请仔细评估自身风险承受能力。</p>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    # 聊天区域
-    st.header("💬 金融咨询")
-    
-    # 显示消息历史
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-    
-    # 用户输入
-    if prompt := st.chat_input("请输入您的金融问题..."):
-        if not st.session_state.get('engine_initialized'):
-            st.warning("⚠️ 请先上传金融资料")
-            return
-        
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-        
-        with st.chat_message("assistant"):
-            with st.spinner("💰 正在分析金融资料..."):
-                try:
-                    answer = rag_engine.answer_question(prompt, FINANCE_PROMPT)
-                    full_answer = answer + RISK_DISCLOSURE
-                    st.markdown(full_answer)
-                    st.session_state.messages.append({"role": "assistant", "content": full_answer})
-                    Logger.log_info(f"金融问答完成: {prompt[:30]}", "FinanceQA")
-                except Exception as e:
-                    error_msg = f"回答失败: {str(e)}"
-                    st.error(error_msg)
-                    st.session_state.messages.append({"role": "assistant", "content": error_msg})
-    
-    # 底部信息
+        else:
+            st.info("暂无历史对话记录")
+
     st.markdown("---")
     st.markdown(f"""
         <div style="text-align: center; color: #666; font-size: 0.9rem;">
         <strong>{config['icon']} {config['name']}</strong> | 版本 {Config.VERSION} | 投资有风险，入市需谨慎
         </div>
     """, unsafe_allow_html=True)
+
+    with st.sidebar:
+        st.header(f"💰 金融系统控制")
+
+        st.markdown("---")
+        st.subheader("📁 金融文档管理")
+
+        uploaded_files = st.file_uploader(
+            "上传金融文档",
+            type=Config.SUPPORTED_FILE_TYPES,
+            accept_multiple_files=True,
+            help=f"支持格式: {', '.join(Config.SUPPORTED_FILE_TYPES)} | 最大 {Config.MAX_FILE_SIZE//(1024*1024)}MB"
+        )
+
+        if uploaded_files or st.session_state.get('current_files'):
+            with st.spinner("💰 正在处理金融文档..."):
+                file_paths = []
+
+                if uploaded_files:
+                    for uploaded_file in uploaded_files:
+                        tmp_path = save_uploaded_file(uploaded_file)
+                        if tmp_path:
+                            file_paths.append(tmp_path)
+                            st.success(f"✅ {uploaded_file.name}")
+
+                if file_paths:
+                    try:
+                        docs = load_multiple_documents(file_paths)
+                        if st.session_state.get('vector_store'):
+                            new_vector_store = chunk2vector(docs, embeddings)
+                            st.session_state.vector_store.merge_from(new_vector_store)
+                        else:
+                            st.session_state.vector_store = chunk2vector(docs, embeddings)
+
+                        st.session_state.current_files.extend([os.path.basename(p) for p in file_paths])
+                        st.session_state.engine_initialized = True
+                        st.success(f"🎉 已添加 {len(docs)} 份金融文档")
+                    except Exception as e:
+                        st.error(f"❌ 处理失败: {str(e)}")
 
 if __name__ == "__main__":
     interactive()

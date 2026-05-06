@@ -1,56 +1,45 @@
 import streamlit as st
 import os
 import tempfile
-from core.rag_engine import RAGEngine
+from rag import load_multiple_documents, chunk2vector, llm_chain, embeddings
+from langchain_community.vectorstores import FAISS
 from config.settings import Config, SYSTEM_CONFIGS
-from utils.logger import Logger
-from utils.security import SecurityManager
+from chat_history import save_chat_history, load_chat_history, delete_chat_history, format_conversation
 
-# 初始化组件
-rag_engine = RAGEngine()
-security_manager = SecurityManager()
-
-# IT技术领域专业提示词
-TECH_PROMPT = """
-你是一名专业的IT技术助手，请根据提供的技术文档回答问题。
-
-规则：
-1. 回答要专业且清晰，适合程序员理解
-2. 如果涉及代码，请提供完整的代码示例
-3. 如果问题涉及技术方案，请提供详细的架构说明
-4. 如果不知道答案，直接说"根据现有知识库，无法回答该问题"
-
-问题：{question}
-上下文：{context}
-
-回答：
-"""
+SYSTEM_NAME = "tech"
+DEFAULT_INDEX_DIR = "tech_faiss_index"
 
 def save_uploaded_file(uploaded_file):
-    """保存上传的文件到临时目录"""
     try:
-        sanitized_name = security_manager.sanitize_filename(uploaded_file.name)
-        suffix = os.path.splitext(sanitized_name)[1]
+        suffix = os.path.splitext(uploaded_file.name)[1]
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
             tmp_file.write(uploaded_file.getvalue())
             return tmp_file.name
     except Exception as e:
-        Logger.log_error(f"文件保存失败: {str(e)}", "TechQA")
         st.error(f"文件保存失败: {str(e)}")
         return None
 
+def load_default_index():
+    """尝试加载预置的知识库索引"""
+    if os.path.exists(DEFAULT_INDEX_DIR):
+        try:
+            vector_store = FAISS.load_local(DEFAULT_INDEX_DIR, embeddings, allow_dangerous_deserialization=True)
+            return vector_store, True
+        except Exception as e:
+            st.warning(f"加载预置索引失败: {str(e)}")
+            return None, False
+    return None, False
+
 def interactive():
-    """企业级IT技术问答系统"""
     config = SYSTEM_CONFIGS["tech"]
-    
+
     st.set_page_config(
-        page_title=f"{config['name']} - 企业级",
+        page_title=f"{config['name']}",
         page_icon=config["icon"],
         layout="wide",
         initial_sidebar_state="expanded"
     )
-    
-    # 企业级样式
+
     st.markdown("""
         <style>
         .main-header {
@@ -75,148 +64,219 @@ def interactive():
             margin-bottom: 1rem;
             border-left: 4px solid #457b9d;
         }
-        .system-info {
-            background: #e8f5e9;
+        .feature-card {
+            background: #fff;
+            border: 1px solid #e0e0e0;
             border-radius: 8px;
             padding: 1rem;
-            margin-top: 1rem;
+            margin-bottom: 0.8rem;
+        }
+        .feature-title {
+            color: #457b9d;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
         }
         </style>
     """, unsafe_allow_html=True)
-    
-    # 头部区域
+
     st.markdown(f"""
         <div class="main-header">
             <h1>{config['icon']} {config['name']}</h1>
             <p>{config['description']} | 版本: {Config.VERSION}</p>
         </div>
     """, unsafe_allow_html=True)
-    
-    # 初始化session state
-    session_keys = ['messages', 'vector_store', 'current_files', 'engine_initialized']
-    for key in session_keys:
-        if key not in st.session_state:
-            st.session_state[key] = [] if key == 'messages' else None
-    
-    # 侧边栏 - 企业级控制面板
-    with st.sidebar:
-        st.header(f"💻 技术系统控制")
-        
-        # 文件上传区域
-        st.markdown("---")
-        st.subheader("📁 技术文档管理")
-        
-        uploaded_files = st.file_uploader(
-            "上传API文档/技术手册",
-            type=Config.SUPPORTED_FILE_TYPES,
-            accept_multiple_files=True,
-            help=f"支持格式: {', '.join(Config.SUPPORTED_FILE_TYPES)} | 最大 {Config.MAX_FILE_SIZE//(1024*1024)}MB"
-        )
-        
-        if uploaded_files or st.session_state.get('current_files'):
-            with st.spinner("正在处理技术文档..."):
-                file_paths = []
-                
-                if uploaded_files:
-                    for uploaded_file in uploaded_files:
-                        if security_manager.check_file_size(uploaded_file.size):
-                            tmp_path = save_uploaded_file(uploaded_file)
-                            if tmp_path:
-                                file_paths.append(tmp_path)
-                                st.success(f"✅ {uploaded_file.name}")
-                        else:
-                            st.error(f"❌ {uploaded_file.name} - 文件过大")
-                
-                if file_paths:
+
+    # 初始化会话状态
+    if 'messages' not in st.session_state:
+        st.session_state.messages = []
+    if 'vector_store' not in st.session_state:
+        st.session_state.vector_store = None
+    if 'current_files' not in st.session_state:
+        st.session_state.current_files = []
+    if 'engine_initialized' not in st.session_state:
+        st.session_state.engine_initialized = False
+    if 'show_history' not in st.session_state:
+        st.session_state.show_history = False
+
+    # 尝试加载预置索引
+    if not st.session_state.engine_initialized and not st.session_state.vector_store:
+        with st.spinner("🔄 正在加载技术知识库..."):
+            vector_store, success = load_default_index()
+            if success and vector_store:
+                st.session_state.vector_store = vector_store
+                st.session_state.engine_initialized = True
+                st.session_state.current_files = ["IT技术知识库"]
+
+    col1, col2 = st.columns([2, 1])
+
+    with col1:
+        st.markdown("""
+            <div class="tech-card">
+            <strong>💡 开发提示</strong>
+            <p>上传您的API文档、技术手册或代码说明后，可以随时提问相关技术问题，系统会基于您的文档进行解答。</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 💬 技术问答")
+
+        for message in st.session_state.get('messages', []):
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        if prompt := st.chat_input("请输入您的技术问题..."):
+            if not st.session_state.get('engine_initialized'):
+                st.warning("⚠️ 请先上传技术文档或等待知识库加载")
+                return
+
+            if 'messages' not in st.session_state:
+                st.session_state.messages = []
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
+
+            with st.chat_message("assistant"):
+                with st.spinner("💻 正在分析技术文档..."):
                     try:
-                        docs = rag_engine.load_multiple_documents(file_paths)
-                        if st.session_state.get('vector_store'):
-                            rag_engine.vector_store = st.session_state.vector_store
-                            rag_engine.vector_store.add_documents(docs)
-                        else:
-                            st.session_state.vector_store = rag_engine.build_vector_store(docs)
-                        
-                        st.session_state.current_files.extend([os.path.basename(p) for p in file_paths])
-                        st.session_state.engine_initialized = True
-                        st.success(f"🎉 已添加 {len(docs)} 份技术文档")
-                        Logger.log_info(f"技术文档加载完成，{len(file_paths)}个文件", "TechQA")
+                        chain = llm_chain(st.session_state.vector_store)
+                        answer = chain.invoke(prompt)
+                        st.markdown(answer)
+                        st.session_state.messages.append({"role": "assistant", "content": answer})
                     except Exception as e:
-                        st.error(f"❌ 处理失败: {str(e)}")
-                        Logger.log_error(f"处理技术文档失败: {str(e)}", "TechQA", e)
-        
-        # 系统状态
+                        error_msg = f"回答失败: {str(e)}"
+                        st.error(error_msg)
+                        if 'messages' in st.session_state:
+                            st.session_state.messages.append({"role": "assistant", "content": error_msg})
+
+    with col2:
+        st.subheader("📋 系统功能")
+
+        features = [
+            ("📄 文档支持", "支持上传API文档、技术手册、代码说明等"),
+            ("💬 智能问答", "基于技术文档进行编程问题解答"),
+            ("💻 代码示例", "提供完整的代码示例和说明"),
+            ("🏗️ 架构设计", "技术方案咨询和架构设计建议"),
+            ("� 历史记录", "对话记录本地存储，随时查看"),
+            ("🔒 隐私保护", "所有数据仅本地处理，保障隐私安全")
+        ]
+
+        for title, desc in features:
+            st.markdown(f"""
+                <div class="feature-card">
+                <div class="feature-title">{title}</div>
+                <p style="color: #666; font-size: 0.9rem;">{desc}</p>
+                </div>
+            """, unsafe_allow_html=True)
+
         st.markdown("---")
         st.subheader("📊 系统状态")
         if st.session_state.get('engine_initialized'):
-            st.markdown("""
-                <div class="system-info">
-                <strong>✅ 系统状态:</strong> 就绪<br>
-                <strong>📚 已加载文档:</strong> {}<br>
-                <strong>💻 模式:</strong> IT技术问答
-                </div>
-            """.format(len(st.session_state.current_files)), unsafe_allow_html=True)
+            st.success("✅ 系统就绪")
+            st.info(f"📚 已加载文档: {len(st.session_state.get('current_files', []))}")
         else:
             st.warning("⚠️ 请先上传技术文档")
-        
-        # 操作按钮
+
         st.markdown("---")
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🗑️ 清空对话", type="secondary"):
-                st.session_state.messages = []
-        with col2:
-            if st.button("🔄 重置系统", type="secondary"):
-                st.session_state.vector_store = None
-                st.session_state.current_files = []
-                st.session_state.engine_initialized = False
-                st.session_state.messages = []
+        if st.button("� 保存当前对话", type="secondary", use_container_width=True):
+            if st.session_state.get('messages'):
+                success = save_chat_history(st.session_state.messages, SYSTEM_NAME)
+                if success:
+                    st.success("✅ 对话已保存")
+                else:
+                    st.error("❌ 保存失败")
+
+        if st.button("📝 查看历史对话", type="secondary", use_container_width=True):
+            st.session_state.show_history = not st.session_state.show_history
+
+        if st.button("�🗑️ 清空对话", type="secondary", use_container_width=True):
+            st.session_state.messages = []
+            st.rerun()
+        if st.button("🔄 重置系统", type="secondary", use_container_width=True):
+            st.session_state.vector_store = None
+            st.session_state.current_files = []
+            st.session_state.engine_initialized = False
+            st.session_state.messages = []
+            st.rerun()
+
+    # 历史对话面板
+    if st.session_state.show_history:
+        st.markdown("---")
+        st.subheader("📝 历史对话记录")
+        
+        history = load_chat_history(SYSTEM_NAME)
+        
+        if history:
+            history.reverse()
+            
+            for conv in history:
+                with st.expander(f"📅 {conv['timestamp'][:19]} | {len(conv['messages'])} 条消息"):
+                    st.code(format_conversation(conv), language='text')
+                    
+                    col_save, col_delete = st.columns(2)
+                    with col_save:
+                        if st.button(f"🔄 恢复对话 {conv['id']}", use_container_width=True):
+                            st.session_state.messages = conv['messages'].copy()
+                            st.session_state.show_history = False
+                            st.success("✅ 对话已恢复")
+                            st.rerun()
+                    with col_delete:
+                        if st.button(f"🗑️ 删除 {conv['id']}", use_container_width=True):
+                            delete_chat_history(SYSTEM_NAME, conv['id'])
+                            st.success("✅ 已删除")
+                            st.rerun()
+            
+            if st.button("🗑️ 清空所有历史", type="primary", use_container_width=True):
+                delete_chat_history(SYSTEM_NAME)
+                st.success("✅ 已清空所有历史")
                 st.rerun()
-    
-    # 技术提示
-    st.markdown("""
-        <div class="tech-card">
-        <strong>💡 开发提示</strong>
-        <p>上传您的API文档、技术手册或代码说明后，可以随时提问相关技术问题，系统会基于您的文档进行解答。</p>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    # 聊天区域
-    st.header("💬 技术问答")
-    
-    # 显示消息历史
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-    
-    # 用户输入
-    if prompt := st.chat_input("请输入您的技术问题..."):
-        if not st.session_state.get('engine_initialized'):
-            st.warning("⚠️ 请先上传技术文档")
-            return
-        
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-        
-        with st.chat_message("assistant"):
-            with st.spinner("💻 正在分析技术文档..."):
-                try:
-                    answer = rag_engine.answer_question(prompt, TECH_PROMPT)
-                    st.markdown(answer)
-                    st.session_state.messages.append({"role": "assistant", "content": answer})
-                    Logger.log_info(f"技术问答完成: {prompt[:30]}", "TechQA")
-                except Exception as e:
-                    error_msg = f"回答失败: {str(e)}"
-                    st.error(error_msg)
-                    st.session_state.messages.append({"role": "assistant", "content": error_msg})
-    
-    # 底部信息
+        else:
+            st.info("暂无历史对话记录")
+
     st.markdown("---")
     st.markdown(f"""
         <div style="text-align: center; color: #666; font-size: 0.9rem;">
         <strong>{config['icon']} {config['name']}</strong> | 版本 {Config.VERSION} | 程序员技术助手
         </div>
     """, unsafe_allow_html=True)
+
+    with st.sidebar:
+        st.header(f"💻 技术系统控制")
+
+        st.markdown("---")
+        st.subheader("📁 技术文档管理")
+
+        uploaded_files = st.file_uploader(
+            "上传API文档/技术手册",
+            type=Config.SUPPORTED_FILE_TYPES,
+            accept_multiple_files=True,
+            help=f"支持格式: {', '.join(Config.SUPPORTED_FILE_TYPES)} | 最大 {Config.MAX_FILE_SIZE//(1024*1024)}MB"
+        )
+
+        if uploaded_files or st.session_state.get('current_files'):
+            with st.spinner("💻 正在处理技术文档..."):
+                file_paths = []
+
+                if uploaded_files:
+                    for uploaded_file in uploaded_files:
+                        tmp_path = save_uploaded_file(uploaded_file)
+                        if tmp_path:
+                            file_paths.append(tmp_path)
+                            st.success(f"✅ {uploaded_file.name}")
+
+                if file_paths:
+                    try:
+                        docs = load_multiple_documents(file_paths)
+                        if st.session_state.get('vector_store'):
+                            new_vector_store = chunk2vector(docs, embeddings)
+                            st.session_state.vector_store.merge_from(new_vector_store)
+                        else:
+                            st.session_state.vector_store = chunk2vector(docs, embeddings)
+
+                        st.session_state.current_files.extend([os.path.basename(p) for p in file_paths])
+                        st.session_state.engine_initialized = True
+                        st.success(f"🎉 已添加 {len(docs)} 份技术文档")
+                    except Exception as e:
+                        st.error(f"❌ 处理失败: {str(e)}")
 
 if __name__ == "__main__":
     interactive()
