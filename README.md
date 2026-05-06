@@ -5,8 +5,33 @@
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.0+-red.svg)
+![LangChain](https://img.shields.io/badge/LangChain-0.1+-orange.svg)
+![FAISS](https://img.shields.io/badge/FAISS-Index-yellow.svg)
+![RAG](https://img.shields.io/badge/RAG-Technology-purple.svg)
+![PRs Welcome](https://img.shields.io/badge/PRs-Welcome-brightgreen.svg)
+![Contributors](https://img.shields.io/github/contributors/Hxdmou/legal-rag-qa-system.svg)
+![Stars](https://img.shields.io/github/stars/Hxdmou/legal-rag-qa-system.svg)
 
 **基于 RAG（检索增强生成）技术的企业级智能问答系统解决方案**
+
+[📖 文档](README.md) | [🤝 贡献](CONTRIBUTING.md) | [❓ FAQ](FAQ.md) | [📧 联系](mailto:business@rag-qa-system.com)
+
+</div>
+
+---
+
+## 🎨 系统截图
+
+<div align="center">
+
+### 🤖 通用RAG智能问答系统
+![通用RAG系统](https://via.placeholder.com/800x450?text=RAG+智能问答系统+界面截图)
+
+### ⚖️ 法律知识问答系统
+![法律知识系统](https://via.placeholder.com/800x450?text=法律知识问答系统+界面截图)
+
+### 🏥 医疗健康问答系统
+![医疗健康系统](https://via.placeholder.com/800x450?text=医疗健康问答系统+界面截图)
 
 </div>
 
