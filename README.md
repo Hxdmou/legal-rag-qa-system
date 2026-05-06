@@ -16,18 +16,22 @@
 
 ## 📚 项目简介
 
-本项目包含两套智能问答系统，均基于 RAG（Retrieval-Augmented Generation）检索增强生成技术：
+本项目包含**六套**智能问答系统，均基于 RAG（Retrieval-Augmented Generation）检索增强生成技术：
 
 | 系统 | 文件 | 端口 | 说明 |
 |------|------|------|------|
-| **RAG 智能问答系统** | `run.py` | 7861 | 通用版，支持任意文档格式 |
-| **法律知识问答系统** | `medical_qa_fixed.py` | 7869 | 法律领域专用版，预置法律知识库 |
+| **📚 通用RAG智能问答系统** | `run.py` | 7861 | 通用版，支持任意文档格式 |
+| **⚖️ 法律知识问答系统** | `medical_qa_fixed.py` | 7869 | 法律领域专用版，预置法律知识库 |
+| **🎓 教育知识问答系统** | `education_qa.py` | 7870 | 学生学习助手，支持教材、课件 |
+| **🏥 医疗健康问答系统** | `medical_qa.py` | 7871 | 健康咨询助手，含免责声明 |
+| **💰 金融知识问答系统** | `finance_qa.py` | 7872 | 金融投资助手，含风险提示 |
+| **💻 IT技术问答系统** | `tech_qa.py` | 7873 | 程序员助手，支持技术文档 |
 
 ---
 
 ## 🎯 核心功能
 
-### 通用 RAG 智能问答系统
+### 📚 通用 RAG 智能问答系统
 - ✅ 支持多格式文档（**TXT、PDF、Excel、Word**）
 - ✅ 智能文本分块和向量化
 - ✅ 混合检索（**BM25 + 向量嵌入**）提升准确性
@@ -35,12 +39,36 @@
 - ✅ 多轮对话，历史自动保存
 - ✅ 对话记录本地存储
 
-### 法律知识问答系统
+### ⚖️ 法律知识问答系统
 - ✅ 预置丰富法律知识库（法律法规、司法解释、典型案例）
 - ✅ 专业法律问答，引用法条依据
 - ✅ 智能法律文书解读
 - ✅ 多轮对话，深入分析法律问题
 - ✅ 知识库可视化管理
+
+### 🎓 教育知识问答系统
+- ✅ 支持教材、课件、学习笔记上传
+- ✅ 智能解答学科问题
+- ✅ 支持公式和专业术语解析
+- ✅ 学习进度跟踪
+
+### 🏥 医疗健康问答系统
+- ✅ 支持医学文献、健康指南上传
+- ✅ 健康咨询与建议
+- ✅ 自动添加医疗免责声明
+- ✅ 用药安全提醒
+
+### 💰 金融知识问答系统
+- ✅ 支持金融法规、理财指南上传
+- ✅ 投资知识问答
+- ✅ 自动添加风险提示
+- ✅ 理财产品分析
+
+### 💻 IT技术问答系统
+- ✅ 支持API文档、技术手册上传
+- ✅ 编程问题解答
+- ✅ 代码示例生成
+- ✅ 技术方案咨询
 
 ---
 
@@ -58,20 +86,40 @@ pip install -r requirements.txt
 
 ### 启动系统
 
-#### 启动通用 RAG 智能问答系统
+#### 方式一：一键启动（推荐）
+双击运行 `启动RAG系统.bat` 即可同时启动**所有六个系统**，并自动打开浏览器。
+
+#### 方式二：单独启动
+
+| 系统 | 启动命令 | 访问地址 |
+|------|----------|----------|
+| 📚 通用RAG智能问答系统 | `streamlit run run.py --server.port 7861` | `http://localhost:7861` |
+| ⚖️ 法律知识问答系统 | `streamlit run medical_qa_fixed.py --server.port 7869` | `http://localhost:7869` |
+| 🎓 教育知识问答系统 | `streamlit run education_qa.py --server.port 7870` | `http://localhost:7870` |
+| 🏥 医疗健康问答系统 | `streamlit run medical_qa.py --server.port 7871` | `http://localhost:7871` |
+| 💰 金融知识问答系统 | `streamlit run finance_qa.py --server.port 7872` | `http://localhost:7872` |
+| 💻 IT技术问答系统 | `streamlit run tech_qa.py --server.port 7873` | `http://localhost:7873` |
+
+#### 手动启动示例
 ```bash
+# 启动通用RAG智能问答系统
 streamlit run run.py --server.port 7861
-```
-访问地址：`http://localhost:7861`
 
-#### 启动法律知识问答系统
-```bash
+# 启动法律知识问答系统
 streamlit run medical_qa_fixed.py --server.port 7869
-```
-访问地址：`http://localhost:7869`
 
-#### 一键启动（Windows）
-双击运行 `启动RAG系统.bat` 即可同时启动两个系统，并自动打开浏览器。
+# 启动教育知识问答系统
+streamlit run education_qa.py --server.port 7870
+
+# 启动医疗健康问答系统
+streamlit run medical_qa.py --server.port 7871
+
+# 启动金融知识问答系统
+streamlit run finance_qa.py --server.port 7872
+
+# 启动IT技术问答系统
+streamlit run tech_qa.py --server.port 7873
+```
 
 ---
 
@@ -140,14 +188,22 @@ streamlit run medical_qa_fixed.py --server.port 7869
 
 ```
 legal-rag-qa-system/
-├── run.py                          # 通用 RAG 智能问答系统
-├── medical_qa_fixed.py             # 法律知识问答系统
+├── run.py                          # 📚 通用 RAG 智能问答系统
+├── medical_qa_fixed.py             # ⚖️ 法律知识问答系统
+├── education_qa.py                 # 🎓 教育知识问答系统
+├── medical_qa.py                   # 🏥 医疗健康问答系统
+├── finance_qa.py                   # 💰 金融知识问答系统
+├── tech_qa.py                      # 💻 IT技术问答系统
+├── rag.py                          # 核心 RAG 模块
 ├── 启动RAG系统.bat                 # Windows 一键启动脚本
 ├── requirements.txt                # Python 依赖
 ├── legal_knowledge_base/           # 法律知识库文件
 ├── README.md                       # 项目说明文档（本文件）
-├── demo_screenshot.png             # 演示截图
-└── 文档测试结果.pdf                # 测试文档
+├── demo_screenshot（1）.png        # 演示截图1
+├── demo_screenshot（2）.png        # 演示截图2
+├── demo_screenshot（3）.png        # 演示截图3
+├── 文档测试结果.pdf                # 测试文档
+└── 法律知识问答系统.pdf            # 系统作品集
 ```
 
 ---
