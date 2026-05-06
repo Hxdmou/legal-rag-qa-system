@@ -189,6 +189,43 @@ rm -rf ./chat_histories/
 2. 使用增量更新策略，避免每次重建索引
 3. 考虑使用分布式向量数据库
 
+## 🔧 常见问题排查
+
+### Q: 出现中文乱码怎么办？
+**A:** 请尝试以下解决方案：
+1. **设置系统编码**：在启动脚本中添加 `chcp 65001`（Windows）或 `export LANG=zh_CN.UTF-8`（Linux/Mac）
+2. **检查文件编码**：确保上传的文档使用 UTF-8 编码
+3. **更新依赖版本**：升级 streamlit、langchain 等依赖到最新版本
+4. **设置 Python 编码**：在代码开头添加 `# -*- coding: utf-8 -*-`
+
+### Q: 依赖安装失败怎么办？
+**A:** 请尝试以下解决方案：
+1. **升级 pip**：`pip install --upgrade pip`
+2. **使用国内镜像**：`pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple`
+3. **手动安装失败的包**：单独安装失败的依赖，查看具体错误信息
+4. **检查 Python 版本**：确保使用 Python 3.10+ 版本
+5. **安装系统依赖**（Linux）：`sudo apt-get install gcc g++ python3-dev`
+
+### Q: 端口冲突怎么办？
+**A:** 请尝试以下解决方案：
+1. **更换端口启动**：`streamlit run run.py --server.port 8080`
+2. **检查端口占用**（Windows）：`netstat -ano | findstr :7861`，然后 `taskkill /F /PID <进程ID>`
+3. **检查端口占用**（Linux/Mac）：`lsof -i :7861`，然后 `kill -9 <进程ID>`
+4. **使用启动脚本**：运行 `启动RAG系统.bat`（Windows）或 `start.sh`（Linux/Mac），脚本会自动检测可用端口
+
+### Q: 文档上传后无法检索怎么办？
+**A:** 请尝试以下解决方案：
+1. **检查文档格式**：确保上传的是支持的格式（PDF、DOCX、TXT等）
+2. **检查文档内容**：扫描件或加密文档可能无法解析
+3. **重建索引**：删除 `faiss_index` 目录，重新上传文档
+4. **检查文件大小**：确保文件不超过 50MB 限制
+
+### Q: 启动时提示缺少模块怎么办？
+**A:**
+1. 确保已安装所有依赖：`pip install -r requirements.txt`
+2. 如果提示缺少特定模块，单独安装：`pip install <模块名>`
+3. 检查 Python 环境是否正确
+
 ## 📞 技术支持
 
 ### Q: 遇到问题如何获取帮助？

@@ -112,9 +112,13 @@ def interactive():
 
     with col1:
         st.markdown("""
-            <div class="finance-card">
-            <strong>� 投资提示</strong>
-            <p>本系统提供的金融信息仅供参考，不能替代专业投资建议。投资有风险，请谨慎决策。</p>
+            <div style="background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
+            <strong style="color: white; font-size: 1.1rem;">⚠️ 投资风险提示</strong>
+            <p style="color: white; margin: 0.5rem 0 0 0;">
+            ⚠️ 本系统提供的金融信息仅供参考，<strong>不构成投资建议或盈利承诺</strong>。
+            <br>
+            投资有风险，理财需谨慎。请根据自身风险承受能力做出投资决策。
+            </p>
             </div>
         """, unsafe_allow_html=True)
 

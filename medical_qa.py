@@ -112,9 +112,13 @@ def interactive():
 
     with col1:
         st.markdown("""
-            <div class="medical-card">
-            <strong>💡 温馨提示</strong>
-            <p>本系统提供的健康信息仅供参考，不能替代专业医疗建议。如有健康问题，请咨询专业医生。</p>
+            <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%); padding: 1rem; border-radius: 12px; margin-bottom: 1rem;">
+            <strong style="color: white; font-size: 1.1rem;">⚠️ 重要医疗免责声明</strong>
+            <p style="color: white; margin: 0.5rem 0 0 0;">
+            🚨 本系统提供的健康信息仅供参考，<strong>不构成医疗诊断或诊疗建议</strong>。
+            <br>
+            如有身体不适，请及时就医，咨询专业医生的意见。
+            </p>
             </div>
         """, unsafe_allow_html=True)
 
