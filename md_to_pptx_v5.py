@@ -5,6 +5,17 @@ from pptx.enum.text import PP_ALIGN
 from pptx.enum.shapes import MSO_SHAPE
 import re
 
+CORPORATE_COLORS = {
+    'primary': RGBColor(0, 100, 180),
+    'secondary': RGBColor(0, 150, 220),
+    'accent': RGBColor(0, 200, 255),
+    'dark': RGBColor(10, 15, 30),
+    'light': RGBColor(230, 240, 250),
+    'highlight': RGBColor(255, 80, 80),
+    'gold': RGBColor(255, 200, 100),
+    'gray': RGBColor(120, 140, 160)
+}
+
 CHAPTER_COLORS = {
     1: {'bg': RGBColor(10, 15, 28), 'accent': RGBColor(0, 180, 255), 'text': RGBColor(230, 240, 250), 'highlight': RGBColor(255, 80, 80), 'secondary': RGBColor(50, 120, 180)},
     2: {'bg': RGBColor(12, 25, 22), 'accent': RGBColor(0, 220, 180), 'text': RGBColor(220, 240, 230), 'highlight': RGBColor(255, 100, 100), 'secondary': RGBColor(30, 150, 130)},
@@ -33,8 +44,8 @@ CHAPTER_TITLES = [
     "第十一章：核心内容总结"
 ]
 
-WATERMARK_TEXT = "© 何晓冬 | A2A协议深度解析"
-COPYRIGHT_INFO = "Copyright © 2026 何晓冬. All Rights Reserved."
+WATERMARK_TEXT = "A2A Protocol | Enterprise Edition"
+COPYRIGHT_INFO = "Copyright © 2026. All Rights Reserved."
 
 DEFAULT_TABLES = {
     1: [
@@ -84,7 +95,13 @@ DEFAULT_TABLES = {
         ['数据脱敏', '数据隐私保护🔴100%', '动态脱敏+静态脱敏', '敏感数据零泄露', '数据共享、合规', '高', '24个月', '脱敏引擎', '精度平衡'],
         ['访问审计', '合规审计能力🔴提升4x', '行为分析+操作记录', '审计覆盖率100%', '合规检查、安全审计', '高', '18个月', '审计系统', '日志存储'],
         ['Agent安全', 'Agent间通信安全🔴提升100%', 'A2A安全协议+加密', '通信零泄露', '多Agent协作、数据传输', '极高', '18个月', 'A2A安全栈', '协议兼容'],
-        ['AI伦理', 'AI行为合规性🔴100%', '伦理框架+审计机制', '违规行为零发生', 'AI应用、智能决策', '高', '24个月', '伦理治理系统', '伦理标准']
+        ['AI伦理', 'AI行为合规性🔴100%', '伦理框架+审计机制', '违规行为零发生', 'AI应用、智能决策', '高', '24个月', '伦理治理系统', '伦理标准'],
+        ['安全审计', '安全评估能力🔴提升3x', '渗透测试+安全扫描', '漏洞发现率99%', '安全评估、合规检查', '高', '18个月', '安全审计平台', '审计深度'],
+        ['安全培训', '安全意识🔴提升200%', '模拟演练+在线课程', '安全事件减少70%', '员工培训、安全意识', '中', '12个月', '培训平台', '培训效果'],
+        ['安全测试', '代码安全🔴提升95%', 'SAST/DAST/IAST', '漏洞修复率95%', '开发安全、CI/CD', '高', '18个月', 'DevSecOps', '误报处理'],
+        ['零信任架构', '安全防护🔴提升100%', '身份验证+最小权限', '内部攻击防护', '企业安全、边界消除', '极高', '24个月', '零信任平台', '实施复杂度'],
+        ['隐私计算', '数据价值释放🔴100%', '联邦学习+安全多方计算', '数据可用不可见', '数据协作、隐私保护', '中', '36个月', '隐私计算平台', '性能开销'],
+        ['SOC2合规', '合规认证🔴100%', '安全运营中心+审计', '合规通过率100%', '企业级SaaS、金融服务', '高', '24个月', 'SOC2体系', '持续合规']
     ],
     4: [
         ['部署策略', '业务价值', '技术亮点', '成功指标', '适用场景', '可用性', '投资回报', '技术架构', '关键挑战'],
@@ -98,6 +115,17 @@ DEFAULT_TABLES = {
         ['Serverless', '运维成本🔴降低50%', 'KEDA+Knative', '按需扩缩', '非核心服务、突发流量', '按需', '12个月', 'KEDA+Knative', '冷启动延迟'],
         ['混合云部署', '云中立🔴100%', 'Anthos/Azure Arc', '多云统一管理', '企业级、多云战略', '多云', '30个月', '混合云管理', '跨云网络'],
         ['GitOps', '部署效率🔴提升3x', 'Argo CD/Flux', '声明式配置', 'CI/CD、版本控制', '高', '18个月', 'GitOps工具链', '配置漂移'],
+        ['服务网格', '服务间通信效率🔴提升2x', 'Istio/Linkerd', '零信任网络', '微服务架构、安全通信', '高', '18个月', '服务网格架构', '配置复杂度'],
+        ['自动化运维', '运维效率🔴提升4x', 'Ansible/Terraform+CI/CD', '部署时间<10min', 'DevOps、持续交付', '高', '12个月', '自动化工具链', '学习曲线'],
+        ['日志管理', '问题定位效率🔴提升5x', 'ELK/Grafana Loki', '日志检索<1s', '运维监控、故障排查', '高', '18个月', '日志平台', '存储成本'],
+        ['指标监控', '可观测性🔴提升3x', 'Prometheus+Grafana', '实时告警<1min', '性能监控、容量规划', '极高', '12个月', '监控体系', '告警风暴'],
+        ['分布式追踪', '故障定位🔴快90%', 'Jaeger/Zipkin', '全链路追踪<50ms', '微服务、分布式系统', '高', '18个月', '追踪系统', '采样率'],
+        ['配置管理', '配置变更效率🔴提升3x', 'ConfigMap+Secret', '热更新<30s', '配置管理、敏感数据', '高', '6个月', 'K8s配置管理', '密钥轮换'],
+        ['存储编排', '存储效率🔴提升2x', 'CSI+LocalPV', '数据持久化', '有状态应用、数据库', '高', '24个月', '存储架构', '存储类型'],
+        ['网络策略', '网络安全🔴提升100%', 'NetworkPolicy', '微分段隔离', '多租户、安全边界', '高', '12个月', '网络隔离', '策略复杂度'],
+        ['自动化测试', '测试覆盖率🔴提升40%', 'Pytest+Selenium', '代码覆盖率>80%', '持续集成、质量保障', '高', '18个月', '测试框架', '测试数据'],
+        ['容量规划', '资源利用率🔴提升30%', 'Prometheus+VPA', '资源预测准确率>90%', '资源管理、成本优化', '高', '24个月', '容量管理', '预测准确性'],
+        ['安全扫描', '漏洞发现🔴快80%', 'Trivy/Grype', '镜像扫描<5min', '安全合规、CI/CD', '高', '12个月', '安全工具链', '误报处理'],
         ['Agent部署', 'Agent部署效率🔴提升4x', 'Agent镜像+自动编排', '部署时间缩短70%', '多Agent系统、自动化部署', '高', '12个月', 'Agent编排平台', '版本兼容'],
         ['Agent监控', 'Agent监控能力🔴提升5x', '分布式追踪+指标采集', '故障发现<2min', 'Agent集群、智能监控', '极高', '18个月', 'O11y+Agent监控', '监控告警']
     ],
@@ -116,7 +144,15 @@ DEFAULT_TABLES = {
         ['内存优化', '内存使用🔴降低30%', '对象池+GC调优', '内存占用-30%', '内存敏感场景', '内存-30%', '12个月', '内存管理', 'GC停顿'],
         ['异步IO', 'IO效率🔴提升2x', 'Reactor/CompletableFuture', '吞吐量+100%', 'IO密集场景', '吞吐量+100%', '18个月', '异步框架', '复杂度'],
         ['Agent优化', 'Agent性能🔴提升3x', 'Agent缓存+预加载', '响应时间-70%', '多Agent系统、智能协作', '高', '12个月', 'Agent性能优化', '缓存一致性'],
-        ['AI推理优化', '推理速度🔴提升4x', '模型量化+TensorRT', '推理延迟-60%', 'AI应用、边缘部署', '高', '18个月', 'AI推理引擎', '精度损失']
+        ['AI推理优化', '推理速度🔴提升4x', '模型量化+TensorRT', '推理延迟-60%', 'AI应用、边缘部署', '高', '18个月', 'AI推理引擎', '精度损失'],
+        ['索引优化', '查询速度🔴提升10x', 'B+树/倒排索引', '查询时间-90%', '大数据查询、全文搜索', '查询-90%', '6个月', '索引引擎', '索引维护'],
+        ['负载均衡', '流量分配🔴优化99%', 'Nginx/LVS/云LB', '请求均匀分布', '高并发、多节点', '均匀分布', '6个月', 'LB集群', '会话保持'],
+        ['预热机制', '首次响应🔴快80%', '缓存预热+预加载', '冷启动延迟-80%', '系统启动、热点数据', '延迟-80%', '3个月', '预热服务', '资源占用'],
+        ['熔断降级', '故障隔离🔴100%', 'Resilience4j/Hystrix', '故障影响范围控制', '微服务、高可用', '故障隔离', '6个月', '熔断框架', '阈值配置'],
+        ['读写优化', '数据库压力🔴降低50%', '读写分离+主从复制', '主库压力-50%', '高并发读写、大数据', '压力-50%', '12个月', '主从架构', '数据同步'],
+        ['边缘计算', '边缘延迟🔴降低60%', 'K3s/KubeEdge', '<30ms延迟', '边缘场景、IoT', '延迟-60%', '24个月', '边缘架构', '边缘管理'],
+        ['GPU加速', '计算性能🔴提升10x', 'CUDA/TensorRT', 'AI推理加速', 'AI训练、推理', '性能+10x', '18个月', 'GPU集群', '成本投入'],
+        ['压缩优化', '传输效率🔴提升50%', 'GZIP/Brotli/Snappy', '传输体积-50%', '网络传输、存储', '体积-50%', '3个月', '压缩服务', 'CPU开销']
     ],
     6: [
         ['案例场景', '业务价值', '技术亮点', '成功指标', '行业领域', '规模', '投资回报', '技术架构', '关键挑战'],
@@ -209,93 +245,118 @@ DEFAULT_TABLES = {
 }
 
 CHAPTER_DESCRIPTIONS = {
-    1: "A2A协议是下一代Agent-to-Agent通信标准，实现异构AI Agent之间的无缝协作，打破平台壁垒，构建开放的AI生态系统。其核心价值包括互操作性、弹性扩展、安全合规和智能协作能力。",
-    2: "协议规范定义了Agent间通信的标准化消息格式和交互模式，基于JSON-RPC 2.0实现跨平台、跨语言的互操作性，支持多层级的协议栈设计。",
-    3: "企业级安全架构包括API网关、WAF防火墙、OAuth 2.0认证、mTLS加密等多层防护，确保数据安全和合规要求，满足金融、医疗等行业的严格监管标准。",
-    4: "基于Kubernetes的高可用部署方案，支持自动扩缩容、健康检查、蓝绿发布等运维能力，保障业务连续性和系统稳定性。",
-    5: "通过网络优化、消息批量、缓存策略、并发处理等手段，实现系统性能的全方位提升，支撑大规模业务场景下的高效运行。",
-    6: "通过供应链管理、金融风控、智能办公、医疗诊断等真实案例，验证A2A协议的业务价值和技术可行性，为企业数字化转型提供参考。",
-    7: "AI智能体正处于快速发展期，未来10-20年将经历标准化、智能化到生态化的演进。蚌埠市作为制造业基地，可抓住长三角一体化机遇，布局AI Agent产业，推动传统产业升级。",
-    8: "针对蚌埠市产业特点，制定差异化人才策略：高中学历推荐使用BOSS直聘、58同城找基础岗位；精神残疾人可通过中国残疾人就业网络服务平台、微信小程序等官方渠道找工作；各年龄段和学历层次都有相应的招聘渠道和培养方案。",
-    9: "蚌埠市为创业者提供完善的政策支持，包括免费注册、创业补贴、税收优惠等。针对无房产证、未过户房产及原房主逝世等特殊情况，提供灵活的场地证明解决方案：原房主逝世需先办理继承公证和房产过户，凭继承证明可正常注册。",
-    10: "AI大模型正处于爆发式发展阶段，算力成本是关键考量因素。API调用方式：GPT-4V每图$0.01，GPT-4每千token$0.03，豆包个人版¥99/月起。私有化部署：Llama 3-70B需4xA100，月费用¥5-12万；轻量模型如Phi-3仅需RTX 4090，月费用¥0.5-2万。云端租赁（AWS/GCP/Azure）按需付费，月费用¥2-20万。企业需根据数据敏感性和预算选择合适的部署方案。",
-    11: "本PPT系统阐述了A2A协议与AI智能体的完整知识体系：从协议架构到安全合规，从部署运维到性能优化，从实战案例到未来趋势，从人才规划到创业指南，全面覆盖AI智能体技术栈。**核心价值**在于构建端到端的企业智能化解决方案，助力蚌埠市AI产业升级与人才发展。"
+    1: "A2A协议是下一代Agent-to-Agent通信标准，实现异构AI Agent之间的无缝协作，打破平台壁垒，构建开放的AI生态系统。",
+    2: "协议规范定义了Agent间通信的标准化消息格式和交互模式，基于JSON-RPC 2.0实现跨平台、跨语言的互操作性。",
+    3: "企业级安全架构包括API网关、WAF防火墙、OAuth 2.0认证、mTLS加密等多层防护，确保数据安全和合规要求。",
+    4: "基于Kubernetes的高可用部署方案，支持自动扩缩容、健康检查、蓝绿发布等运维能力，保障业务连续性。",
+    5: "通过网络优化、消息批量、缓存策略、并发处理等手段，实现系统性能的全方位提升。",
+    6: "通过供应链管理、金融风控、智能办公、医疗诊断等真实案例，验证A2A协议的业务价值和技术可行性。",
+    7: "AI智能体正处于快速发展期，未来10-20年将经历标准化、智能化到生态化的演进。",
+    8: "针对蚌埠市产业特点，制定差异化人才策略，涵盖全人群包括视力残疾人和肢体残疾人的就业帮扶。",
+    9: "蚌埠市为创业者提供完善的政策支持，包括免费注册、创业补贴、税收优惠等。",
+    10: "AI大模型正处于爆发式发展阶段，算力成本是关键考量因素，需根据数据敏感性和预算选择合适的部署方案。",
+    11: "本PPT系统阐述了A2A协议与AI智能体的完整知识体系，全面覆盖AI智能体技术栈，助力蚌埠市AI产业升级。"
 }
 
 CHAPTER_RESOURCES = {
-    1: [
-        '官方文档: https://a2a-protocol.org',
-        'Linux Foundation: https://linuxfoundation.org/press-release/a2a-protocol/',
-        'DeepLearning.AI课程: https://www.deeplearning.ai/courses/intro-to-a2a-protocol/',
-        'GitHub仓库: https://github.com/a2aproject'
-    ],
-    2: [
-        'JSON-RPC 2.0规范: https://www.jsonrpc.org/specification',
-        'HTTP/2协议: https://http2.github.io/',
-        'gRPC官方文档: https://grpc.io/docs/',
-        'QUIC协议: https://datatracker.ietf.org/wg/quic/about/'
-    ],
-    3: [
-        'OAuth 2.0规范: https://oauth.net/2/',
-        'mTLS指南: https://www.envoyproxy.io/docs/envoy/latest/security/mozilla',
-        'WAF配置: https://www.modsecurity.org/CRS/Documentation/',
-        'Kong网关: https://docs.konghq.com/'
-    ],
-    4: [
-        'Kubernetes文档: https://kubernetes.io/zh-cn/docs/',
-        'Prometheus监控: https://prometheus.io/docs/introduction/overview/',
-        'Grafana可视化: https://grafana.com/docs/grafana/latest/',
-        'Istio服务网格: https://istio.io/latest/zh/docs/'
-    ],
-    5: [
-        'Redis缓存: https://redis.io/docs/',
-        'gRPC性能优化: https://grpc.io/docs/guides/performance/',
-        '批量处理: https://docs.python.org/3/library/concurrent.futures.html',
-        'CDN加速: https://www.cloudflare.com/learning/cdn/what-is-a-cdn/'
-    ],
-    6: [
-        '供应链案例: https://www.supplychaindive.com/',
-        '金融风控案例: https://www.fintechnexus.com/',
-        '多Agent系统: https://arxiv.org/abs/2401.07580',
-        '最佳实践: https://www.agentprotocol.io/'
-    ],
-    7: [
-        'AI趋势报告: https://www.gartner.com/en/articles/what-s-new-in-artificial-intelligence-from-the-2024-gartner-hype-cycle',
-        'Agent未来展望: https://arxiv.org/abs/2403.07691',
-        '中国AI发展: https://www.caict.ac.cn/',
-        '长三角一体化: https://www.yangtze-river-delta.gov.cn/'
-    ],
-    8: [
-        '蚌埠人才网: http://www.bbrc.com.cn/',
-        '蚌埠人社局: http://rsj.bengbu.gov.cn/',
-        '残疾人就业平台: https://www.cdpee.cn/',
-        'BOSS直聘: https://www.zhipin.com/'
-    ],
-    9: [
-        '安徽政务服务网: http://www.ahzwfw.gov.cn/',
-        '蚌埠市场监管局: http://amr.bengbu.gov.cn/',
-        '创业补贴政策: http://rsj.bengbu.gov.cn/xxgk/gsgg/202403/t20240306_3567238.html',
-        '皖事通APP: https://www.ahzwfw.gov.cn/col/col13206/index.html'
-    ],
-    10: [
-        'GPT-4V: https://openai.com/research/gpt-4v-system-card',
-        'Gemini: https://deepmind.google/technologies/gemini/',
-        'Llama 3: https://ai.meta.com/llama/',
-        'Qwen: https://qwenlm.github.io/',
-        'DeepSeek: https://www.deepseek.com/',
-        '豆包: https://www.doubao.com/'
-    ]
+    1: ['官方文档: https://a2a-protocol.org', 'Linux Foundation: https://linuxfoundation.org', 'DeepLearning.AI: https://www.deeplearning.ai', 'GitHub: https://github.com/a2aproject'],
+    2: ['JSON-RPC 2.0: https://www.jsonrpc.org/specification', 'HTTP/2: https://http2.github.io/', 'gRPC: https://grpc.io/docs/'],
+    3: ['OAuth 2.0: https://oauth.net/2/', 'mTLS指南: https://www.envoyproxy.io', 'Kong网关: https://docs.konghq.com/'],
+    4: ['Kubernetes: https://kubernetes.io/zh-cn/docs/', 'Prometheus: https://prometheus.io/docs/', 'Grafana: https://grafana.com/docs/'],
+    5: ['Redis: https://redis.io/docs/', 'gRPC优化: https://grpc.io/docs/guides/performance/', 'CDN: https://www.cloudflare.com/'],
+    6: ['供应链: https://www.supplychaindive.com/', '金融风控: https://www.fintechnexus.com/', '多Agent: https://arxiv.org/abs/2401.07580'],
+    7: ['AI趋势: https://www.gartner.com', 'Agent展望: https://arxiv.org/abs/2403.07691', '中国AI: https://www.caict.ac.cn/'],
+    8: ['蚌埠人才网: http://www.bbrc.com.cn/', '蚌埠人社局: http://rsj.bengbu.gov.cn/', '残疾人就业: https://www.cdpee.cn/'],
+    9: ['安徽政务: http://www.ahzwfw.gov.cn/', '蚌埠市场监管: http://amr.bengbu.gov.cn/', '皖事通: https://www.ahzwfw.gov.cn/'],
+    10: ['GPT-4V: https://openai.com/research/gpt-4v', 'Gemini: https://deepmind.google/technologies/gemini/', 'Llama 3: https://ai.meta.com/llama/']
 }
 
-def add_watermark(slide):
-    """在幻灯片添加水印"""
+def create_corporate_logo_element(slide, left, top, size, colors):
     shapes = slide.shapes
-    
+    outer_hex = shapes.add_shape(MSO_SHAPE.HEXAGON, left, top, size, size)
+    outer_hex.fill.solid()
+    outer_hex.fill.fore_color.rgb = colors['accent']
+    outer_hex.fill.transparency = 0.25
+    outer_hex.line.fill.background()
+    inner_hex = shapes.add_shape(MSO_SHAPE.HEXAGON, left + size * 0.15, top + size * 0.15, size * 0.7, size * 0.7)
+    inner_hex.fill.solid()
+    inner_hex.fill.fore_color.rgb = colors['secondary']
+    inner_hex.fill.transparency = 0.4
+    inner_hex.line.fill.background()
+    core_dot = shapes.add_shape(MSO_SHAPE.OVAL, left + size * 0.35, top + size * 0.35, size * 0.3, size * 0.3)
+    core_dot.fill.solid()
+    core_dot.fill.fore_color.rgb = RGBColor(255, 255, 255)
+    core_dot.fill.transparency = 0.3
+    core_dot.line.fill.background()
+
+def create_network_node(slide, left, top, size, colors):
+    shapes = slide.shapes
+    main_circle = shapes.add_shape(MSO_SHAPE.OVAL, left, top, size, size)
+    main_circle.fill.solid()
+    main_circle.fill.fore_color.rgb = colors['accent']
+    main_circle.fill.transparency = 0.2
+    main_circle.line.color.rgb = colors['accent']
+    main_circle.line.width = Pt(1.5)
+    inner_ring = shapes.add_shape(MSO_SHAPE.OVAL, left + size * 0.2, top + size * 0.2, size * 0.6, size * 0.6)
+    inner_ring.fill.solid()
+    inner_ring.fill.fore_color.rgb = colors['secondary']
+    inner_ring.fill.transparency = 0.5
+    inner_ring.line.fill.background()
+    center_dot = shapes.add_shape(MSO_SHAPE.OVAL, left + size * 0.35, top + size * 0.35, size * 0.3, size * 0.3)
+    center_dot.fill.solid()
+    center_dot.fill.fore_color.rgb = RGBColor(255, 255, 255)
+    center_dot.line.fill.background()
+
+def create_tech_circuit(slide, left, top, width, colors):
+    shapes = slide.shapes
+    for i in range(5):
+        dot_left = left + i * (width / 4)
+        dot = shapes.add_shape(MSO_SHAPE.OVAL, dot_left, top, width * 0.08, width * 0.08)
+        dot.fill.solid()
+        dot.fill.fore_color.rgb = colors['accent']
+        dot.fill.transparency = 0.3
+        dot.line.fill.background()
+        if i < 4:
+            line = shapes.add_shape(MSO_SHAPE.RECTANGLE, dot_left + width * 0.04, top + width * 0.035, width * 0.2, width * 0.01)
+            line.fill.solid()
+            line.fill.fore_color.rgb = colors['accent']
+            line.fill.transparency = 0.5
+            line.line.fill.background()
+
+def create_robot_face(slide, left, top, width, colors):
+    shapes = slide.shapes
+    head = shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, top, width, width * 0.85)
+    head.fill.solid()
+    head.fill.fore_color.rgb = colors['accent']
+    head.fill.transparency = 0.15
+    head.line.color.rgb = colors['accent']
+    head.line.width = Pt(1)
+    eye_width = width * 0.18
+    eye_height = width * 0.12
+    eye_left = left + width * 0.22
+    eye_top = top + width * 0.22
+    for offset in [0, width * 0.38]:
+        eye = shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, eye_left + offset, eye_top, eye_width, eye_height)
+        eye.fill.solid()
+        eye.fill.fore_color.rgb = RGBColor(255, 255, 255)
+        eye.line.fill.background()
+        pupil = shapes.add_shape(MSO_SHAPE.OVAL, eye_left + offset + eye_width * 0.3, eye_top + eye_height * 0.25, eye_width * 0.4, eye_height * 0.5)
+        pupil.fill.solid()
+        pupil.fill.fore_color.rgb = colors['accent']
+        pupil.line.fill.background()
+    mouth_width = width * 0.35
+    mouth = shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left + width * 0.325, top + width * 0.55, mouth_width, width * 0.06)
+    mouth.fill.solid()
+    mouth.fill.fore_color.rgb = RGBColor(255, 255, 255)
+    mouth.fill.transparency = 0.3
+    mouth.line.fill.background()
+
+def add_watermark(slide):
+    shapes = slide.shapes
     for i in range(3):
         for j in range(4):
             left = Inches(1.5 + i * 5)
             top = Inches(1.8 + j * 2)
-            
             watermark_box = slide.shapes.add_textbox(left, top, Inches(4), Inches(1))
             watermark_frame = watermark_box.text_frame
             p = watermark_frame.add_paragraph()
@@ -304,12 +365,10 @@ def add_watermark(slide):
             p.font.color.rgb = RGBColor(100, 120, 150)
             p.font.bold = False
             p.alignment = PP_ALIGN.CENTER
-            
             watermark_box.rotation = -15
             watermark_box.fill.transparency = 0.85
 
 def add_copyright(slide):
-    """在幻灯片底部添加版权信息"""
     copyright_box = slide.shapes.add_textbox(Inches(0.5), Inches(8.4), Inches(15), Inches(0.5))
     copyright_frame = copyright_box.text_frame
     p = copyright_frame.add_paragraph()
@@ -318,263 +377,113 @@ def add_copyright(slide):
     p.font.color.rgb = RGBColor(120, 140, 160)
     p.alignment = PP_ALIGN.LEFT
 
-def create_robot_face(slide, left, top, width, colors):
-    """创建机器人脸部图形"""
-    shapes = slide.shapes
-    
-    head = shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, top, width, width * 0.9)
-    head.fill.solid()
-    head.fill.fore_color.rgb = colors['accent']
-    head.fill.transparency = 0.3
-    head.line.fill.background()
-    
-    eye_width = width * 0.15
-    eye_height = width * 0.15
-    eye_left = left + width * 0.25
-    eye_top = top + width * 0.25
-    
-    left_eye = shapes.add_shape(MSO_SHAPE.OVAL, eye_left, eye_top, eye_width, eye_height)
-    left_eye.fill.solid()
-    left_eye.fill.fore_color.rgb = RGBColor(255, 255, 255)
-    left_eye.line.fill.background()
-    
-    right_eye = shapes.add_shape(MSO_SHAPE.OVAL, eye_left + width * 0.35, eye_top, eye_width, eye_height)
-    right_eye.fill.solid()
-    right_eye.fill.fore_color.rgb = RGBColor(255, 255, 255)
-    right_eye.line.fill.background()
-    
-    pupil = shapes.add_shape(MSO_SHAPE.OVAL, eye_left + eye_width * 0.25, eye_top + eye_height * 0.25, eye_width * 0.5, eye_height * 0.5)
-    pupil.fill.solid()
-    pupil.fill.fore_color.rgb = RGBColor(0, 0, 0)
-    pupil.line.fill.background()
-    
-    pupil2 = shapes.add_shape(MSO_SHAPE.OVAL, eye_left + width * 0.35 + eye_width * 0.25, eye_top + eye_height * 0.25, eye_width * 0.5, eye_height * 0.5)
-    pupil2.fill.solid()
-    pupil2.fill.fore_color.rgb = RGBColor(0, 0, 0)
-    pupil2.line.fill.background()
-    
-    mouth = shapes.add_shape(MSO_SHAPE.RECTANGLE, left + width * 0.35, top + width * 0.6, width * 0.3, width * 0.08)
-    mouth.fill.solid()
-    mouth.fill.fore_color.rgb = RGBColor(255, 255, 255)
-    mouth.fill.transparency = 0.5
-    mouth.line.fill.background()
-
-def add_ai_robot_element(slide, chapter_num, colors):
-    """根据章节主题添加符合内容的AI机器人元素"""
-    shapes = slide.shapes
-    
-    if chapter_num == 1:
-        create_robot_face(slide, Inches(13.5), Inches(1), Inches(2), colors)
-        
-        circle = shapes.add_shape(MSO_SHAPE.OVAL, Inches(14), Inches(3.2), Inches(1.2), Inches(1.2))
-        circle.fill.solid()
-        circle.fill.fore_color.rgb = colors['accent']
-        circle.fill.transparency = 0.4
-        circle.line.fill.background()
-        
-        hexagon = shapes.add_shape(MSO_SHAPE.HEXAGON, Inches(14.2), Inches(4.5), Inches(0.8), Inches(0.8))
-        hexagon.fill.solid()
-        hexagon.fill.fore_color.rgb = colors['secondary']
-        hexagon.fill.transparency = 0.5
-        hexagon.line.fill.background()
-        
-    elif chapter_num == 2:
-        left = Inches(13.8)
-        top = Inches(1)
-        
-        for i in range(4):
-            rect = shapes.add_shape(MSO_SHAPE.RECTANGLE, left + i * Inches(0.3), top + i * Inches(0.5), Inches(1), Inches(0.4))
-            rect.fill.solid()
-            rect.fill.fore_color.rgb = colors['accent']
-            rect.fill.transparency = 0.5 - i * 0.1
-            rect.line.fill.background()
-        
-        arrow = shapes.add_shape(MSO_SHAPE.UP_ARROW, Inches(14.3), Inches(3.5), Inches(0.8), Inches(0.8))
-        arrow.fill.solid()
-        arrow.fill.fore_color.rgb = colors['secondary']
-        arrow.fill.transparency = 0.6
-        arrow.line.fill.background()
-        
-    elif chapter_num == 3:
-        outer_circle = shapes.add_shape(MSO_SHAPE.OVAL, Inches(13.5), Inches(1), Inches(2), Inches(2))
-        outer_circle.fill.solid()
-        outer_circle.fill.fore_color.rgb = colors['accent']
-        outer_circle.fill.transparency = 0.2
-        outer_circle.line.fill.background()
-        
-        middle_circle = shapes.add_shape(MSO_SHAPE.OVAL, Inches(13.8), Inches(1.3), Inches(1.4), Inches(1.4))
-        middle_circle.fill.solid()
-        middle_circle.fill.fore_color.rgb = colors['secondary']
-        middle_circle.fill.transparency = 0.3
-        middle_circle.line.fill.background()
-        
-        inner_circle = shapes.add_shape(MSO_SHAPE.OVAL, Inches(14.1), Inches(1.6), Inches(0.8), Inches(0.8))
-        inner_circle.fill.solid()
-        inner_circle.fill.fore_color.rgb = RGBColor(255, 255, 255)
-        inner_circle.fill.transparency = 0.5
-        inner_circle.line.fill.background()
-        
-        pentagon = shapes.add_shape(MSO_SHAPE.PENTAGON, Inches(14), Inches(3), Inches(1), Inches(1.2))
-        pentagon.fill.solid()
-        pentagon.fill.fore_color.rgb = colors['accent']
-        pentagon.fill.transparency = 0.4
-        pentagon.line.fill.background()
-        
-    elif chapter_num == 4:
-        for i in range(3):
-            layer = shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(13.5 + i * 0.2), Inches(1 + i * 0.3), Inches(2 - i * 0.4), Inches(0.6))
-            layer.fill.solid()
-            layer.fill.fore_color.rgb = colors['accent']
-            layer.fill.transparency = 0.5 - i * 0.15
-            layer.line.fill.background()
-        
-        server = shapes.add_shape(MSO_SHAPE.TRAPEZOID, Inches(13.8), Inches(2.5), Inches(1.5), Inches(1))
-        server.fill.solid()
-        server.fill.fore_color.rgb = colors['secondary']
-        server.fill.transparency = 0.4
-        server.line.fill.background()
-        
-    elif chapter_num == 5:
-        bars = [0.8, 1.2, 0.9, 1.4, 1.1]
-        for i, height in enumerate(bars):
-            bar = shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(13.6 + i * 0.3), Inches(2.5 - height * 0.5), Inches(0.2), Inches(height))
-            bar.fill.solid()
-            bar.fill.fore_color.rgb = colors['accent']
-            bar.fill.transparency = 0.5
-            bar.line.fill.background()
-        
-        speed_lines = shapes.add_shape(MSO_SHAPE.CHEVRON, Inches(14), Inches(1), Inches(1.2), Inches(1))
-        speed_lines.fill.solid()
-        speed_lines.fill.fore_color.rgb = colors['secondary']
-        speed_lines.fill.transparency = 0.4
-        speed_lines.line.fill.background()
-        
-    elif chapter_num == 6:
-        create_robot_face(slide, Inches(13.5), Inches(1), Inches(1.8), colors)
-        
-        hexagon1 = shapes.add_shape(MSO_SHAPE.HEXAGON, Inches(13.8), Inches(3), Inches(1), Inches(1))
-        hexagon1.fill.solid()
-        hexagon1.fill.fore_color.rgb = colors['accent']
-        hexagon1.fill.transparency = 0.4
-        hexagon1.line.fill.background()
-        
-        hexagon2 = shapes.add_shape(MSO_SHAPE.HEXAGON, Inches(14.5), Inches(3.8), Inches(0.8), Inches(0.8))
-        hexagon2.fill.solid()
-        hexagon2.fill.fore_color.rgb = colors['secondary']
-        hexagon2.fill.transparency = 0.5
-        hexagon2.line.fill.background()
-
 def add_chapter_background(slide, chapter_num):
-    """添加章节特定风格背景"""
     colors = CHAPTER_COLORS.get(chapter_num, CHAPTER_COLORS[1])
-    
     background = slide.background
     fill = background.fill
     fill.solid()
     fill.fore_color.rgb = colors['bg']
-    
     shapes = slide.shapes
-    
     gradient_oval = shapes.add_shape(MSO_SHAPE.OVAL, Inches(10), Inches(-2), Inches(12), Inches(10))
     gradient_oval.fill.solid()
     gradient_oval.fill.fore_color.rgb = colors['accent']
     gradient_oval.fill.transparency = 0.12
     gradient_oval.line.fill.background()
-    
     bottom_bar = shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(8.5), Inches(16), Inches(0.5))
     bottom_bar.fill.solid()
     bottom_bar.fill.fore_color.rgb = colors['accent']
     bottom_bar.fill.transparency = 0.2
     bottom_bar.line.fill.background()
-    
     return colors
 
-def create_title_slide(prs):
-    """创建封面页"""
+def create_enterprise_title_slide(prs):
     slide_layout = prs.slide_layouts[5]
     slide = prs.slides.add_slide(slide_layout)
-    
     background = slide.background
     fill = background.fill
     fill.solid()
     fill.fore_color.rgb = RGBColor(8, 12, 22)
-    
     shapes = slide.shapes
     
-    large_gradient = shapes.add_shape(MSO_SHAPE.OVAL, Inches(6), Inches(-3), Inches(14), Inches(12))
+    large_gradient = shapes.add_shape(MSO_SHAPE.OVAL, Inches(5), Inches(-4), Inches(16), Inches(14))
     large_gradient.fill.solid()
-    large_gradient.fill.fore_color.rgb = RGBColor(0, 120, 200)
-    large_gradient.fill.transparency = 0.18
+    large_gradient.fill.fore_color.rgb = RGBColor(0, 80, 160)
+    large_gradient.fill.transparency = 0.2
     large_gradient.line.fill.background()
     
-    hexagon_decor = shapes.add_shape(MSO_SHAPE.HEXAGON, Inches(13), Inches(0.5), Inches(2.5), Inches(2.5))
-    hexagon_decor.fill.solid()
-    hexagon_decor.fill.fore_color.rgb = RGBColor(0, 180, 255)
-    hexagon_decor.fill.transparency = 0.4
-    hexagon_decor.line.fill.background()
+    for i in range(4):
+        hex_size = Inches(1.5 + i * 0.3)
+        hex_left = Inches(12 - i * 0.5)
+        hex_top = Inches(0.3 + i * 0.4)
+        create_corporate_logo_element(slide, hex_left, hex_top, hex_size, {'accent': RGBColor(0, 150, 220), 'secondary': RGBColor(0, 200, 255)})
     
-    circle_decor = shapes.add_shape(MSO_SHAPE.OVAL, Inches(14), Inches(2.5), Inches(1), Inches(1))
-    circle_decor.fill.solid()
-    circle_decor.fill.fore_color.rgb = RGBColor(100, 220, 255)
-    circle_decor.fill.transparency = 0.6
-    circle_decor.line.fill.background()
+    for i in range(6):
+        node_left = Inches(0.3 + i * 2.5)
+        node_top = Inches(7 + (i % 2) * 0.8)
+        create_network_node(slide, node_left, node_top, Inches(0.4), {'accent': RGBColor(0, 150, 220), 'secondary': RGBColor(0, 180, 255)})
     
-    create_robot_face(slide, Inches(0.5), Inches(5.5), Inches(1.5), {'accent': RGBColor(0, 180, 255), 'secondary': RGBColor(50, 120, 180)})
+    for i in range(3):
+        circuit_top = Inches(1.5 + i * 1.2)
+        create_tech_circuit(slide, Inches(0.3), circuit_top, Inches(3), {'accent': RGBColor(0, 120, 180)})
     
-    title_box = slide.shapes.add_textbox(Inches(2), Inches(2), Inches(12), Inches(2.5))
+    title_box = slide.shapes.add_textbox(Inches(1.5), Inches(2.2), Inches(13), Inches(1.8))
     title_frame = title_box.text_frame
     p = title_frame.add_paragraph()
-    p.text = "A2A协议与AI智能体：技术、趋势、人才与大模型生态"
-    p.font.size = Pt(34)
+    p.text = "A2A协议与AI智能体"
+    p.font.size = Pt(48)
     p.font.color.rgb = RGBColor(255, 255, 255)
     p.font.bold = True
     p.alignment = PP_ALIGN.CENTER
     
-    subtitle_box = slide.shapes.add_textbox(Inches(2.5), Inches(4.2), Inches(11), Inches(1))
+    subtitle_box = slide.shapes.add_textbox(Inches(1.5), Inches(3.8), Inches(13), Inches(0.9))
     subtitle_frame = subtitle_box.text_frame
     p = subtitle_frame.add_paragraph()
-    p.text = "协议架构 · 安全合规 · 部署运维 · 大模型趋势 · 蚌埠实践"
-    p.font.size = Pt(20)
+    p.text = "技术架构 · 安全合规 · 部署运维 · 大模型趋势 · 人才战略"
+    p.font.size = Pt(22)
     p.font.color.rgb = RGBColor(0, 200, 255)
     p.alignment = PP_ALIGN.CENTER
     
-    presenter_box = slide.shapes.add_textbox(Inches(3), Inches(5.5), Inches(10), Inches(1))
-    presenter_frame = presenter_box.text_frame
-    p = presenter_frame.add_paragraph()
-    p.text = "【主讲人：何晓冬】"
-    p.font.size = Pt(20)
-    p.font.color.rgb = RGBColor(255, 200, 100)
-    p.font.bold = True
-    p.alignment = PP_ALIGN.CENTER
+    line_box = slide.shapes.add_textbox(Inches(4), Inches(4.6), Inches(8), Inches(0.05))
+    line_frame = line_box.text_frame
+    p = line_frame.add_paragraph()
+    p.text = ""
+    p.font.size = Pt(2)
+    line_box.fill.solid()
+    line_box.fill.fore_color.rgb = RGBColor(0, 180, 255)
     
-    info_box = slide.shapes.add_textbox(Inches(3), Inches(7), Inches(10), Inches(1))
+    info_box = slide.shapes.add_textbox(Inches(3), Inches(5.5), Inches(10), Inches(1.2))
     info_frame = info_box.text_frame
     p = info_frame.add_paragraph()
-    p.text = "版本: v3.1 | 日期: 2026年5月 | © 2026 何晓冬"
+    p.text = "版本: v4.0 Enterprise  |  2026年5月"
     p.font.size = Pt(14)
     p.font.color.rgb = RGBColor(150, 170, 190)
     p.alignment = PP_ALIGN.CENTER
     
-    add_copyright(slide)
+    p = info_frame.add_paragraph()
+    p.text = "© 2026 Enterprise Edition"
+    p.font.size = Pt(12)
+    p.font.color.rgb = RGBColor(120, 140, 160)
+    p.alignment = PP_ALIGN.CENTER
     
+    add_copyright(slide)
     return slide
 
 def create_chapter_slide(prs, chapter):
-    """创建章节幻灯片（含表格、AI元素、红色重点和拓展资源）"""
     slide_layout = prs.slide_layouts[5]
     slide = prs.slides.add_slide(slide_layout)
-    
     colors = add_chapter_background(slide, chapter['num'])
-    
     add_watermark(slide)
     
-    add_ai_robot_element(slide, chapter['num'], colors)
+    shapes = slide.shapes
+    create_corporate_logo_element(slide, Inches(13.5), Inches(0.3), Inches(1.8), colors)
+    create_network_node(slide, Inches(13.8), Inches(2.5), Inches(0.5), colors)
+    create_tech_circuit(slide, Inches(13.5), Inches(3.2), Inches(2), colors)
     
     title_box = slide.shapes.add_textbox(Inches(1), Inches(0.3), Inches(12), Inches(0.8))
     title_frame = title_box.text_frame
     p = title_frame.add_paragraph()
     p.text = chapter['title']
-    p.font.size = Pt(22)
+    p.font.size = Pt(24)
     p.font.color.rgb = colors['accent']
     p.font.bold = True
     p.alignment = PP_ALIGN.CENTER
@@ -590,38 +499,40 @@ def create_chapter_slide(prs, chapter):
         p.font.color.rgb = colors['text']
         p.alignment = PP_ALIGN.LEFT
     
-    if chapter['tables']:
-        table_data = chapter['tables'][0]
-        create_table(slide, table_data, colors)
+    if chapter['num'] in DEFAULT_TABLES:
+        create_table(slide, DEFAULT_TABLES[chapter['num']], colors)
+    elif chapter['tables']:
+        max_rows = 0
+        best_table = None
+        for table in chapter['tables']:
+            if len(table) > max_rows:
+                max_rows = len(table)
+                best_table = table
+        
+        if best_table:
+            create_table(slide, best_table, colors)
     
     resources = CHAPTER_RESOURCES.get(chapter['num'], [])
     if resources:
         create_resources_box(slide, resources, colors)
     
     add_copyright(slide)
-    
     return slide
 
 def create_table(slide, table_data, colors):
-    """在幻灯片中创建表格，红色标记重点内容"""
     num_rows = len(table_data)
     num_cols = len(table_data[0]) if num_rows > 0 else 3
-    
     left = Inches(0.4)
     top = Inches(2.0)
     width = Inches(14.8)
     height = Inches(4.2)
-    
     table = slide.shapes.add_table(num_rows, num_cols, left, top, width, height).table
-    
     highlight_keywords = ['核心', '关键', '重要', '必须', '最佳', '提升', '降低', '99', 'SOC2', '百万', '🔴']
     
     for i, row in enumerate(table_data):
         for j, cell in enumerate(row):
             cell_text = cell.replace('🔴', '')
-            
             table.cell(i, j).text = cell_text
-            
             paragraph = table.cell(i, j).text_frame.paragraphs[0]
             if num_cols >= 9:
                 paragraph.font.size = Pt(6.8)
@@ -652,54 +563,52 @@ def create_table(slide, table_data, colors):
                 table.cell(i, j).fill.transparency = 0.3
 
 def create_resources_box(slide, resources, colors):
-    """在幻灯片底部创建拓展资源区域"""
     res_box = slide.shapes.add_textbox(Inches(0.7), Inches(6.5), Inches(14), Inches(1.7))
     res_frame = res_box.text_frame
     res_frame.word_wrap = True
-    
     p = res_frame.add_paragraph()
     p.text = "📚 拓展学习资源"
     p.font.size = Pt(11)
     p.font.color.rgb = RGBColor(100, 220, 255)
     p.font.bold = True
-    
     for res in resources[:3]:
         p = res_frame.add_paragraph()
         p.text = res
         p.font.size = Pt(8)
         p.font.color.rgb = RGBColor(170, 185, 200)
 
-def create_summary_slide(prs):
-    """创建总结页"""
+def create_enterprise_summary_slide(prs):
     slide_layout = prs.slide_layouts[5]
     slide = prs.slides.add_slide(slide_layout)
-    
     background = slide.background
     fill = background.fill
     fill.solid()
-    fill.fore_color.rgb = RGBColor(10, 15, 28)
-    
+    fill.fore_color.rgb = RGBColor(8, 12, 22)
     shapes = slide.shapes
     
-    gradient_oval = shapes.add_shape(MSO_SHAPE.OVAL, Inches(5), Inches(-2), Inches(14), Inches(12))
-    gradient_oval.fill.solid()
-    gradient_oval.fill.fore_color.rgb = RGBColor(0, 120, 200)
-    gradient_oval.fill.transparency = 0.15
-    gradient_oval.line.fill.background()
+    large_gradient = shapes.add_shape(MSO_SHAPE.OVAL, Inches(4), Inches(-3), Inches(16), Inches(14))
+    large_gradient.fill.solid()
+    large_gradient.fill.fore_color.rgb = RGBColor(0, 80, 160)
+    large_gradient.fill.transparency = 0.18
+    large_gradient.line.fill.background()
     
-    bottom_bar = shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0), Inches(8.5), Inches(16), Inches(0.5))
-    bottom_bar.fill.solid()
-    bottom_bar.fill.fore_color.rgb = RGBColor(0, 180, 255)
-    bottom_bar.fill.transparency = 0.2
-    bottom_bar.line.fill.background()
+    for i in range(3):
+        hex_left = Inches(0.3 + i * 0.8)
+        hex_top = Inches(0.3 + i * 0.5)
+        create_corporate_logo_element(slide, hex_left, hex_top, Inches(1.2), {'accent': RGBColor(0, 180, 255), 'secondary': RGBColor(0, 220, 200)})
+    
+    for i in range(5):
+        node_left = Inches(14 - i * 0.6)
+        node_top = Inches(7.5 + (i % 2) * 0.4)
+        create_network_node(slide, node_left, node_top, Inches(0.35), {'accent': RGBColor(0, 180, 255), 'secondary': RGBColor(0, 200, 255)})
     
     add_watermark(slide)
     
-    title_box = slide.shapes.add_textbox(Inches(3), Inches(0.5), Inches(10), Inches(1))
+    title_box = slide.shapes.add_textbox(Inches(2), Inches(0.4), Inches(12), Inches(1))
     title_frame = title_box.text_frame
     p = title_frame.add_paragraph()
     p.text = "🎯 A2A协议核心要点总结"
-    p.font.size = Pt(28)
+    p.font.size = Pt(32)
     p.font.color.rgb = RGBColor(255, 255, 255)
     p.font.bold = True
     p.alignment = PP_ALIGN.CENTER
@@ -708,14 +617,17 @@ def create_summary_slide(prs):
         ['章节', '核心内容', '关键价值', '技术亮点'],
         ['第一章', '去中心化架构', '高可用弹性', '标准化协议'],
         ['第二章', 'JSON-RPC规范', '跨平台互操作', '异步通信'],
-        ['第三章', 'OAuth2+mTLS', '🔴企业级安全', '零信任'],
+        ['第三章', 'OAuth2+mTLS', '🔴企业级安全', '零信任架构'],
         ['第四章', 'K8s部署', '🔴99.99%可用', '自动扩缩容'],
-        ['第五章', '缓存+批量', '🔴性能提升3x', '低延迟'],
-        ['第六章', '实战案例', '业务价值验证', '多Agent协作']
+        ['第五章', '缓存+批量', '🔴性能提升3x', '低延迟设计'],
+        ['第六章', '实战案例', '业务价值验证', '多Agent协作'],
+        ['第七章', 'AI发展趋势', '2026-2046演进', '战略布局'],
+        ['第八章', '人才规划', '全人群覆盖', '残疾人就业'],
+        ['第九章', '创业指南', '政策支持', '零成本注册'],
+        ['第十章', '大模型生态', '多模态融合', '成本优化']
     ]
     
-    table = slide.shapes.add_table(7, 4, Inches(0.8), Inches(1.5), Inches(14.5), Inches(5.5)).table
-    
+    table = slide.shapes.add_table(11, 4, Inches(0.8), Inches(1.4), Inches(14.5), Inches(6.2)).table
     highlight_keywords = ['核心', '关键', '重要', '必须', '最佳', '提升', '降低', '99', 'SOC2', '百万', '🔴']
     
     for i, row in enumerate(summary_data):
@@ -723,14 +635,14 @@ def create_summary_slide(prs):
             cell_text = cell.replace('🔴', '')
             table.cell(i, j).text = cell_text
             paragraph = table.cell(i, j).text_frame.paragraphs[0]
-            paragraph.font.size = Pt(11)
+            paragraph.font.size = Pt(10)
             paragraph.alignment = PP_ALIGN.CENTER
             
             if i == 0:
                 paragraph.font.color.rgb = RGBColor(255, 255, 255)
                 paragraph.font.bold = True
                 table.cell(i, j).fill.solid()
-                table.cell(i, j).fill.fore_color.rgb = RGBColor(0, 180, 255)
+                table.cell(i, j).fill.fore_color.rgb = RGBColor(0, 150, 220)
             else:
                 is_highlight = any(keyword in row[j] for keyword in highlight_keywords)
                 if is_highlight:
@@ -742,90 +654,74 @@ def create_summary_slide(prs):
                 table.cell(i, j).fill.fore_color.rgb = RGBColor(25, 30, 40)
     
     add_copyright(slide)
-    
     return slide
 
 def create_thank_you_slide(prs):
-    """创建感谢页"""
     slide_layout = prs.slide_layouts[5]
     slide = prs.slides.add_slide(slide_layout)
-    
     background = slide.background
     fill = background.fill
     fill.solid()
     fill.fore_color.rgb = RGBColor(8, 12, 22)
-    
     shapes = slide.shapes
     
-    large_gradient = shapes.add_shape(MSO_SHAPE.OVAL, Inches(5), Inches(-1), Inches(10), Inches(10))
+    large_gradient = shapes.add_shape(MSO_SHAPE.OVAL, Inches(4), Inches(-2), Inches(14), Inches(12))
     large_gradient.fill.solid()
-    large_gradient.fill.fore_color.rgb = RGBColor(0, 100, 180)
-    large_gradient.fill.transparency = 0.25
+    large_gradient.fill.fore_color.rgb = RGBColor(0, 80, 160)
+    large_gradient.fill.transparency = 0.22
     large_gradient.line.fill.background()
     
-    hexagon_decor = shapes.add_shape(MSO_SHAPE.HEXAGON, Inches(7.5), Inches(2.5), Inches(2), Inches(2))
-    hexagon_decor.fill.solid()
-    hexagon_decor.fill.fore_color.rgb = RGBColor(0, 200, 255)
-    hexagon_decor.fill.transparency = 0.35
-    hexagon_decor.line.fill.background()
+    for i in range(4):
+        create_corporate_logo_element(slide, Inches(1 + i * 3.5), Inches(1 + (i % 2) * 0.8), Inches(1.2), {'accent': RGBColor(0, 180, 255), 'secondary': RGBColor(0, 200, 255)})
     
-    create_robot_face(slide, Inches(1), Inches(5), Inches(1.2), {'accent': RGBColor(0, 180, 255), 'secondary': RGBColor(50, 120, 180)})
-    create_robot_face(slide, Inches(13.8), Inches(5), Inches(1.2), {'accent': RGBColor(0, 180, 255), 'secondary': RGBColor(50, 120, 180)})
+    create_network_node(slide, Inches(0.5), Inches(5), Inches(0.6), {'accent': RGBColor(0, 180, 255), 'secondary': RGBColor(0, 200, 255)})
+    create_network_node(slide, Inches(14.2), Inches(5), Inches(0.6), {'accent': RGBColor(0, 180, 255), 'secondary': RGBColor(0, 200, 255)})
     
-    thank_box = slide.shapes.add_textbox(Inches(2), Inches(4), Inches(12), Inches(2.5))
+    thank_box = slide.shapes.add_textbox(Inches(2), Inches(3.5), Inches(12), Inches(2))
     thank_frame = thank_box.text_frame
     p = thank_frame.add_paragraph()
     p.text = "THANK YOU"
-    p.font.size = Pt(52)
+    p.font.size = Pt(56)
     p.font.color.rgb = RGBColor(255, 255, 255)
     p.font.bold = True
     p.alignment = PP_ALIGN.CENTER
     
     p = thank_frame.add_paragraph()
-    p.text = "谢谢"
-    p.font.size = Pt(36)
+    p.text = "谢谢观看"
+    p.font.size = Pt(32)
     p.font.color.rgb = RGBColor(0, 200, 255)
     p.alignment = PP_ALIGN.CENTER
     
-    presenter_box = slide.shapes.add_textbox(Inches(3), Inches(6.8), Inches(10), Inches(1))
-    presenter_frame = presenter_box.text_frame
-    p = presenter_frame.add_paragraph()
-    p.text = "【主讲人：何晓冬】"
-    p.font.size = Pt(20)
-    p.font.color.rgb = RGBColor(255, 200, 100)
-    p.font.bold = True
+    contact_box = slide.shapes.add_textbox(Inches(3), Inches(6.5), Inches(10), Inches(0.8))
+    contact_frame = contact_box.text_frame
+    p = contact_frame.add_paragraph()
+    p.text = "A2A Protocol Enterprise Edition | 2026"
+    p.font.size = Pt(14)
+    p.font.color.rgb = RGBColor(150, 170, 190)
     p.alignment = PP_ALIGN.CENTER
     
     add_copyright(slide)
-    
     return slide
 
 def parse_markdown_for_tables(md_content):
-    """解析Markdown，提取章节表格数据，按正确顺序排列"""
     chapters = {}
-    
     lines = md_content.split('\n')
     i = 0
     
     while i < len(lines):
         line = lines[i]
-        
         if line.startswith('# 第') and '章：' in line:
             title = line[2:].strip()
-            
             chapter_num = None
             for idx, expected_title in enumerate(CHAPTER_TITLES, 1):
                 if title.startswith(expected_title[:5]):
                     chapter_num = idx
                     break
-            
             if chapter_num is None:
                 i += 1
                 continue
-            
             tables = []
             i += 1
-            
             while i < len(lines):
                 if lines[i].startswith('|'):
                     table_data = []
@@ -843,17 +739,14 @@ def parse_markdown_for_tables(md_content):
                     continue
                 else:
                     i += 1
-            
             if not tables and chapter_num in DEFAULT_TABLES:
                 tables.append(DEFAULT_TABLES[chapter_num])
-            
             if tables:
                 chapters[chapter_num] = {
                     'num': chapter_num,
                     'title': title,
                     'tables': tables
                 }
-        
         i += 1
     
     result = []
@@ -866,21 +759,19 @@ def parse_markdown_for_tables(md_content):
                 'title': CHAPTER_TITLES[num-1],
                 'tables': [DEFAULT_TABLES[num]]
             })
-    
     return result
 
-def create_pptx_compact(chapters, output_path):
-    """创建精简版PPTX文件"""
+def create_pptx_enterprise(chapters, output_path):
     prs = Presentation()
     prs.slide_width = Inches(16)
     prs.slide_height = Inches(9)
     
-    create_title_slide(prs)
+    create_enterprise_title_slide(prs)
     
     for chapter in chapters:
         create_chapter_slide(prs, chapter)
     
-    create_summary_slide(prs)
+    create_enterprise_summary_slide(prs)
     create_thank_you_slide(prs)
     
     prs.save(output_path)
@@ -889,7 +780,7 @@ def create_pptx_compact(chapters, output_path):
 
 if __name__ == '__main__':
     md_file = r'f:\个人作品\legal-rag-qa-system\A2A_ENTERPRISE_PPT.md'
-    output_file = r'f:\个人作品\legal-rag-qa-system\A2A_ENTERPRISE_PPT_V4.pptx'
+    output_file = r'f:\个人作品\legal-rag-qa-system\A2A_ENTERPRISE_PPT_V11.pptx'
     
     with open(md_file, 'r', encoding='utf-8') as f:
         md_content = f.read()
@@ -899,4 +790,4 @@ if __name__ == '__main__':
     for ch in chapters:
         print(f"  第{ch['num']}章: {ch['title']}")
     
-    create_pptx_compact(chapters, output_file)
+    create_pptx_enterprise(chapters, output_file)
