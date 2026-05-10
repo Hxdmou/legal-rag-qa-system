@@ -277,13 +277,32 @@ def interactive():
 
                 if file_paths:
                     try:
+                        st.info(f"📄 正在加载 {len(file_paths)} 个文档...")
                         docs = load_multiple_documents(file_paths)
+                        
+                        if not docs:
+                            st.error("❌ 文档加载失败：未找到有效文档内容")
+                            return
+                        
+                        st.info(f"🔄 正在向量化 {len(docs)} 个文档...")
                         st.session_state.vector_store = chunk2vector(docs, embeddings)
                         st.session_state.current_files = [os.path.basename(p) for p in file_paths]
                         st.session_state.engine_initialized = True
                         st.success(f"🎉 索引建立完成！共 {len(docs)} 个文档")
+                        
+                        # 清理临时文件
+                        for fp in file_paths:
+                            if fp.startswith(tempfile.gettempdir()):
+                                try:
+                                    os.remove(fp)
+                                except:
+                                    pass
+                    except ValueError as e:
+                        st.error(f"❌ 索引建立失败：{str(e)}")
                     except Exception as e:
+                        import traceback
                         st.error(f"❌ 索引建立失败: {str(e)}")
+                        st.code(traceback.format_exc(), language='python')
 
 if __name__ == "__main__":
     interactive()

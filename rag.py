@@ -91,20 +91,26 @@ def load_multiple_documents(file_paths):
 def chunk2vector(docs, embeddings):
     if not docs:
         raise ValueError("文档列表为空，无法创建向量存储")
+    
+    print(f"正在分割 {len(docs)} 个文档...")
 
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=500,
         chunk_overlap=50
     )
     chunks = text_splitter.split_documents(docs)
+    
+    print(f"文档分割完成，共 {len(chunks)} 个 chunks")
 
     if not chunks:
         raise ValueError("文档分割后为空，无法创建向量存储")
 
+    print("正在创建FAISS向量索引...")
     vector = FAISS.from_documents(
         documents=chunks,
         embedding=embeddings
         )
+    print("向量索引创建完成")
     return vector
 def query_expansion(question):
     """
