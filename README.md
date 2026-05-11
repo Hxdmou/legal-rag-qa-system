@@ -14,7 +14,7 @@
 
 **基于 RAG（检索增强生成）技术的企业级智能问答系统解决方案**
 
-[📖 文档](README.md) | [📝 知乎文章](https://zhuanlan.zhihu.com/p/2036839001018118603) | [🤝 贡献](CONTRIBUTING.md) | [❓ FAQ](FAQ.md) | [📧 联系](mailto:business@rag-qa-system.com)
+[📖 文档](README.md) | [📝 知乎文章](https://zhuanlan.zhihu.com/p/2036839001018118603) | [📊 A2A协议学习笔记PPT](docs/presentations/A2A_ENTERPRISE_PPT_V12.pptx) | [🤝 贡献](CONTRIBUTING.md) | [❓ FAQ](FAQ.md) | [📧 联系](mailto:business@rag-qa-system.com)
 
 </div>
 
