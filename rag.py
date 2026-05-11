@@ -37,11 +37,15 @@ embeddings = OpenAIEmbeddings(
     deployment=embedding_deployment
  )
 '''
+dashscope_api_key = os.getenv("DASHSCOPE_API_KEY", "")
+if not dashscope_api_key:
+    raise ValueError("请设置环境变量 DASHSCOPE_API_KEY")
+
 embeddings = DashScopeEmbeddings(
     model="text-embedding-v2",
-    dashscope_api_key="sk-5c38864910304592848d4fe80a8dac5f")
+    dashscope_api_key=dashscope_api_key)
 llm = ChatOpenAI(base_url='https://dashscope.aliyuncs.com/compatible-mode/v1',
-                 api_key="sk-5c38864910304592848d4fe80a8dac5f",
+                 api_key=dashscope_api_key,
                  model="qwen2.5-72b-instruct", temperature=0.7)
 def load_document(file_path):
     """
