@@ -62,24 +62,41 @@ def get_embeddings():
     global _embeddings
     
     if _embeddings is None:
-        dashscope_api_key = os.getenv("DASHSCOPE_API_KEY", "")
-        openai_api_key = os.getenv("OPENAI_API_KEY", "")
+        dashscope_api_key = os.getenv("DASHSCOPE_API_KEY", "").strip()
+        openai_api_key = os.getenv("OPENAI_API_KEY", "").strip()
         
-        if dashscope_api_key:
-            _embeddings = DashScopeEmbeddings(
-                model="text-embedding-v2",
-                dashscope_api_key=dashscope_api_key
-            )
-        elif openai_api_key:
-            model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
-            base_url = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
-            _embeddings = OpenAIEmbeddings(
-                model=model,
-                base_url=base_url,
-                api_key=openai_api_key
-            )
-        else:
-            raise ValueError("请设置 DASHSCOPE_API_KEY 或 OPENAI_API_KEY 环境变量")
+        if dashscope_api_key and dashscope_api_key != "YOUR_DASHSCOPE_API_KEY":
+            try:
+                _embeddings = DashScopeEmbeddings(
+                    model="text-embedding-v2",
+                    dashscope_api_key=dashscope_api_key
+                )
+            except Exception:
+                print("DashScope API key 无效，尝试使用本地模型")
+                dashscope_api_key = ""
+        elif openai_api_key and openai_api_key != "YOUR_OPENAI_API_KEY":
+            try:
+                model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+                base_url = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
+                _embeddings = OpenAIEmbeddings(
+                    model=model,
+                    base_url=base_url,
+                    api_key=openai_api_key
+                )
+            except Exception:
+                print("OpenAI API key 无效，尝试使用本地模型")
+                openai_api_key = ""
+        
+        if not _embeddings:
+            try:
+                from langchain_huggingface import HuggingFaceEmbeddings
+                _embeddings = HuggingFaceEmbeddings(
+                    model_name="shibing624/text2vec-base-chinese",
+                    model_kwargs={"device": "cpu"}
+                )
+                print("使用本地嵌入模型: text2vec-base-chinese")
+            except ImportError:
+                raise ValueError("请设置有效的 DASHSCOPE_API_KEY 或 OPENAI_API_KEY 环境变量，或安装 langchain-huggingface")
     
     return _embeddings
 

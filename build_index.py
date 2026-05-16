@@ -1,6 +1,6 @@
 import os
 import shutil
-from rag import load_multiple_documents, chunk2vector, embeddings
+from rag import load_multiple_documents, chunk2vector, get_embeddings
 from config.settings import SYSTEM_CONFIGS
 
 def build_index_for_system(system_name, doc_paths):
@@ -25,7 +25,7 @@ def build_index_for_system(system_name, doc_paths):
             return False
         
         print(f"正在为 {system_name} 创建向量索引...")
-        vector_store = chunk2vector(docs, embeddings)
+        vector_store = chunk2vector(docs, get_embeddings())
         vector_store.save_local(index_dir)
         
         print(f"✅ {system_name} 知识库索引构建成功，共 {len(docs)} 份文档")

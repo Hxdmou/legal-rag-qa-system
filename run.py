@@ -19,7 +19,7 @@ from batch_processor import create_batch_interface
 from document_visualizer import create_document_viewer, get_document_summary, create_document_export
 
 SYSTEM_NAME = "general"
-DEFAULT_INDEX_DIR = "faiss_index"
+DEFAULT_INDEX_DIR = "general_faiss_index"
 
 op_logger = get_operation_logger(SYSTEM_NAME)
 
@@ -41,7 +41,7 @@ def load_default_index():
             return vector_store, True, f"成功加载预置索引"
         except Exception as e:
             return None, False, f"加载预置索引失败: {str(e)}"
-    return None, False, "未找到预置索引目录"
+    return None, False, "未找到预置索引目录。您可以上传文档创建新的知识库，或运行 python build_index.py 构建预置索引"
 
 def save_index_to_disk(vector_store, index_dir=DEFAULT_INDEX_DIR):
     try:
