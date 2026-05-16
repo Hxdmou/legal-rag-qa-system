@@ -28,13 +28,22 @@
 <div align="center">
 
 ### 🤖 通用RAG智能问答系统
-![通用RAG系统](https://via.placeholder.com/800x450?text=RAG+智能问答系统+界面截图)
+![通用RAG系统](docs/assets/通用RAG智能问答系统——智能问答示例（1）.png)
 
 ### ⚖️ 法律知识问答系统
-![法律知识系统](https://via.placeholder.com/800x450?text=法律知识问答系统+界面截图)
+![法律知识系统](docs/assets/法律知识问答系统——法律问答示例（1）.png)
+
+### 🎓 教育学习问答系统
+![教育学习系统](docs/assets/教育知识问答系统——教育问答示例.png)
 
 ### 🏥 医疗健康问答系统
-![医疗健康系统](https://via.placeholder.com/800x450?text=医疗健康问答系统+界面截图)
+![医疗健康系统](docs/assets/医疗健康问答系统——医疗问答示例.jpeg)
+
+### 💰 金融投资问答系统
+![金融投资系统](docs/assets/金融知识问答系统——金融问答示例.png)
+
+### 💻 IT技术问答系统
+![IT技术系统](docs/assets/IT技术问答系统——技术问答示例（1）.jpeg)
 
 </div>
 
