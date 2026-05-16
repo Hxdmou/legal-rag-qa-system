@@ -2,6 +2,9 @@
 
 <div align="center">
 
+![Version](https://img.shields.io/badge/Version-2.1.0-blue.svg)
+![API Available](https://img.shields.io/badge/API-Available-green.svg)
+![Batch Processing](https://img.shields.io/badge/Batch-Processing-orange.svg)
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.0+-red.svg)
@@ -14,7 +17,7 @@
 
 **基于 RAG（检索增强生成）技术的企业级智能问答系统解决方案**
 
-[📖 文档](README.md) | [📝 知乎文章](https://zhuanlan.zhihu.com/p/2036839001018118603) | [📊 A2A协议学习笔记PPT](docs/presentations/A2A_ENTERPRISE_PPT_V12.pptx) | [🤝 贡献](CONTRIBUTING.md) | [❓ FAQ](FAQ.md) | [📧 联系](mailto:business@rag-qa-system.com)
+[📖 文档](README.md) | [📝 知乎文章](https://zhuanlan.zhihu.com/p/2036839001018118603) | [📊 A2A协议学习笔记PPT](docs/presentations/A2A_ENTERPRISE_PPT_V12.pptx) | [🔌 API文档](docs/api_example.md) | [🤝 贡献](CONTRIBUTING.md) | [❓ FAQ](FAQ.md) | [📧 联系](mailto:business@rag-qa-system.com)
 
 </div>
 
@@ -135,6 +138,16 @@ bash start.sh
 │  └───────────────┘ └───────────────┘ └─────────────────┘    │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## ✨ 新功能
+
+- 🔌 **REST API 接口**: 轻松集成到您的应用
+- 📦 **批量问答处理**: 一键处理上千文档
+- 👁️ **文档可视化**: 上传即可预览
+- 💾 **导出与备份**: 数据永不丢失
+- 📊 **NLP新闻分类**: 附赠舆情分析模块
 
 ---
 
