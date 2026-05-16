@@ -9,7 +9,7 @@ class Config:
     
     # 项目基础配置
     PROJECT_NAME = os.getenv("PROJECT_NAME", "RAG智能知识问答系统")
-    VERSION = "2.0.0"
+    VERSION = "2.1.0"
     DEBUG = os.getenv("DEBUG", "False").lower() == "true"
     
     # 服务器配置

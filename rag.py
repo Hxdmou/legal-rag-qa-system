@@ -1,56 +1,89 @@
 import streamlit as st
-import os.path
+import os
 import time
 import json
+from typing import List, Dict, Any, Iterator, Tuple
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import TextLoader, PyPDFLoader, UnstructuredExcelLoader
+from langchain_community.document_loaders import (
+    TextLoader,
+    PyPDFLoader,
+    UnstructuredExcelLoader,
+    Docx2txtLoader,
+    UnstructuredWordDocumentLoader
+)
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from langchain_core.runnables import RunnableParallel, RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.documents import Document
 import os
 from dotenv import load_dotenv
 from langchain_community.embeddings import DashScopeEmbeddings
-'''
-如果需要使用OpenAI密钥对 请解除这部分注释 并将42-47行部分阿里云的llm和embedding加载部分注释掉
-load_dotenv('/Users/kane/PycharmProjects/rag_demo/.env')
-openai_endpoint: str = os.getenv('OPENAI_ENDPOINT')
-openai_api_key: str = os.getenv('OPENAI_API_KEY')
-openai_api_version: str = os.getenv('OPENAI_API_VERSION')
-openai_deployment: str = os.getenv('OPENAI_DEPLOYMENT')
-embedding_deployment: str = os.getenv('EMBEDDING_DEPLOYMENT')
-embedding_api_version: str = os.getenv('EMBEDDING_API_VERSION')
-embedding_api_key: str = os.getenv('EMBEDDING_API_KEY')
-embedding_endpoint: str = os.getenv('EMBEDDING_ENDPOINT')
-llm = ChatOpenAI(
-    deployment=openai_deployment,
-    openai_api_version=openai_api_version,
-    endpoint=openai_endpoint,
-    api_key=openai_api_key,
-)
-embeddings = OpenAIEmbeddings(
-    openai_api_version=embedding_api_version,
-    base_url=embedding_endpoint,
-    api_key=embedding_api_key,
-    deployment=embedding_deployment
- )
-'''
-dashscope_api_key = os.getenv("DASHSCOPE_API_KEY", "")
-if not dashscope_api_key:
-    raise ValueError("请设置环境变量 DASHSCOPE_API_KEY")
 
-embeddings = DashScopeEmbeddings(
-    model="text-embedding-v2",
-    dashscope_api_key=dashscope_api_key)
-llm = ChatOpenAI(base_url='https://dashscope.aliyuncs.com/compatible-mode/v1',
-                 api_key=dashscope_api_key,
-                 model="qwen2.5-72b-instruct", temperature=0.7)
+load_dotenv()
+
+_llm = None
+_embeddings = None
+
+def get_llm(temperature=None, model_name=None):
+    global _llm
+    temp = temperature if temperature is not None else float(os.getenv("LLM_TEMPERATURE", "0.7"))
+    model = model_name if model_name is not None else os.getenv("LLM_MODEL_NAME", "qwen2.5-72b-instruct")
+    
+    if _llm is None or _llm.temperature != temp:
+        dashscope_api_key = os.getenv("DASHSCOPE_API_KEY", "")
+        openai_api_key = os.getenv("OPENAI_API_KEY", "")
+        
+        if dashscope_api_key:
+            _llm = ChatOpenAI(
+                base_url='https://dashscope.aliyuncs.com/compatible-mode/v1',
+                api_key=dashscope_api_key,
+                model=model,
+                temperature=temp,
+                streaming=True
+            )
+        elif openai_api_key:
+            base_url = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
+            _llm = ChatOpenAI(
+                base_url=base_url,
+                api_key=openai_api_key,
+                model=model,
+                temperature=temp,
+                streaming=True
+            )
+        else:
+            raise ValueError("请设置 DASHSCOPE_API_KEY 或 OPENAI_API_KEY 环境变量")
+    
+    return _llm
+
+def get_embeddings():
+    global _embeddings
+    
+    if _embeddings is None:
+        dashscope_api_key = os.getenv("DASHSCOPE_API_KEY", "")
+        openai_api_key = os.getenv("OPENAI_API_KEY", "")
+        
+        if dashscope_api_key:
+            _embeddings = DashScopeEmbeddings(
+                model="text-embedding-v2",
+                dashscope_api_key=dashscope_api_key
+            )
+        elif openai_api_key:
+            model = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+            base_url = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
+            _embeddings = OpenAIEmbeddings(
+                model=model,
+                base_url=base_url,
+                api_key=openai_api_key
+            )
+        else:
+            raise ValueError("请设置 DASHSCOPE_API_KEY 或 OPENAI_API_KEY 环境变量")
+    
+    return _embeddings
+
 def load_document(file_path):
-    """
-    根据文件类型加载文档，支持 txt、pdf、xlsx、xls 格式
-    """
     file_extension = os.path.splitext(file_path)[1].lower()
 
     if file_extension == '.txt':
@@ -59,30 +92,33 @@ def load_document(file_path):
         loader = PyPDFLoader(file_path)
     elif file_extension in ['.xlsx', '.xls']:
         loader = UnstructuredExcelLoader(file_path, mode="elements")
+    elif file_extension in ['.docx', '.doc']:
+        try:
+            loader = Docx2txtLoader(file_path)
+        except:
+            loader = UnstructuredWordDocumentLoader(file_path, mode="elements")
     else:
-        raise ValueError(f"不支持的文件格式: {file_extension}，仅支持 .txt, .pdf, .xlsx, .xls")
+        raise ValueError(f"不支持的文件格式: {file_extension}，仅支持 .txt, .pdf, .xlsx, .xls, .docx, .doc")
 
     docs = loader.load()
     print(f"已加载文件: {file_path}, 类型: {file_extension}, 文档数: {len(docs)}")
     if docs:
         print(f"第一条文档元数据: {docs[0].metadata}")
     return docs
-def text_chunk(file_path):
-    """
-    加载文件并按文本分割成 chunks
-    """
+
+def text_chunk(file_path, chunk_size=None, chunk_overlap=None):
+    chunk_size = chunk_size or int(os.getenv("CHUNK_SIZE", "500"))
+    chunk_overlap = chunk_overlap or int(os.getenv("CHUNK_OVERLAP", "50"))
+    
     docs = load_document(file_path)
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=50
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap
     )
     chunks = text_splitter.split_documents(docs)
     return chunks
+
 def load_multiple_documents(file_paths):
-    """
-    加载多个文档文件，支持混合类型
-    file_paths: 文件路径列表
-    """
     all_docs = []
     for file_path in file_paths:
         try:
@@ -92,15 +128,19 @@ def load_multiple_documents(file_paths):
             print(f"加载文件失败 {file_path}: {str(e)}")
 
     return all_docs
-def chunk2vector(docs, embeddings):
+
+def chunk2vector(docs, embeddings, chunk_size=None, chunk_overlap=None):
+    chunk_size = chunk_size or int(os.getenv("CHUNK_SIZE", "500"))
+    chunk_overlap = chunk_overlap or int(os.getenv("CHUNK_OVERLAP", "50"))
+    
     if not docs:
         raise ValueError("文档列表为空，无法创建向量存储")
     
     print(f"正在分割 {len(docs)} 个文档...")
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=50
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap
     )
     chunks = text_splitter.split_documents(docs)
     
@@ -116,21 +156,15 @@ def chunk2vector(docs, embeddings):
         )
     print("向量索引创建完成")
     return vector
-def query_expansion(question):
-    """
-    扩展用户查询，提高检索准确性
-    """
+
+def query_expansion(question, llm):
     expansion_template = """你是一个查询扩展专家，你的任务是将用户的问题扩展为多个相关的查询，以提高信息检索的准确性。
-    原始问题: {question}
-    请提供3个不同角度的扩展查询，每个查询都应该与原始问题相关，但从不同的角度表达。
-    例如，如果原始问题是"如何治疗感冒"，扩展查询可以是：
-    1. 感冒的常见治疗方法有哪些
-    2. 感冒的药物治疗方案
-    3. 感冒的自然疗法和家庭护理
-    输出格式：
-    1. 扩展查询1
-    2. 扩展查询2
-    3. 扩展查询3"""
+原始问题: {question}
+请提供3个不同角度的扩展查询，每个查询都应该与原始问题相关，但从不同的角度表达。
+输出格式：
+1. 扩展查询1
+2. 扩展查询2
+3. 扩展查询3"""
 
     expansion_prompt = ChatPromptTemplate.from_template(expansion_template)
     expansion_chain = expansion_prompt | llm | StrOutputParser()
@@ -148,51 +182,156 @@ def query_expansion(question):
         queries.insert(0, question)
 
     return queries
-def llm_chain(vector):
-    template = """You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. If you don't know the answer, just say that you don't know.
-    Question: {question}
-    Context: {context}
-    Answer:"""
+
+def get_retriever_with_scores(vector, query: str, k: int = 5) -> List[Tuple[Document, float]]:
+    """检索文档并返回带相似度分数的结果"""
+    docs_with_scores = vector.similarity_search_with_score(query, k=k * 2)
+    
+    seen = set()
+    unique_docs = []
+    for doc, score in docs_with_scores:
+        doc_id = f"{doc.metadata.get('source', '')}:{doc.page_content[:50]}"
+        if doc_id not in seen:
+            seen.add(doc_id)
+            unique_docs.append((doc, score))
+    
+    return unique_docs[:k]
+
+def llm_chain(vector, temperature=None, top_k=None, retrieval_mode=None, return_sources: bool = True):
+    """
+    创建 RAG 链，支持动态参数配置
+    - return_sources: 是否返回检索来源
+    """
+    llm = get_llm(temperature=temperature)
+    k = top_k or int(os.getenv("TOP_K", "5"))
+    
+    template = """你是一个专业的问答助手。请使用以下检索到的上下文信息来回答用户的问题。
+如果在上下文中找不到相关信息，请诚实地说"根据提供的文档内容，我无法回答这个问题"。
+请用简洁、准确的语言回答。
+
+问题: {question}
+上下文: {context}
+回答:"""
     prompt = ChatPromptTemplate.from_template(template)
 
     def retrieve_with_expansion(question):
-        expanded_queries = query_expansion(question)
+        expanded_queries = query_expansion(question, llm)
 
         all_docs = []
         seen_docs = set()
 
         for query in expanded_queries[:3]:
-            docs = vector.similarity_search(query, k=3)
-
+            docs = vector.similarity_search(query, k=k)
             for doc in docs:
                 doc_id = f"{doc.metadata.get('source', '')}:{doc.page_content[:100]}"
                 if doc_id not in seen_docs:
                     seen_docs.add(doc_id)
                     all_docs.append(doc)
-
-                if len(all_docs) >= 5:
+                if len(all_docs) >= k + 2:
                     break
-
-            if len(all_docs) >= 5:
+            if len(all_docs) >= k + 2:
                 break
 
-        return all_docs
+        return all_docs[:k]
 
-    chain = (
+    def retrieve_with_scores(question):
+        expanded_queries = query_expansion(question, llm)
+        
+        all_docs_with_scores = {}
+        
+        for query in expanded_queries[:3]:
+            docs_with_scores = get_retriever_with_scores(vector, query, k)
+            for doc, score in docs_with_scores:
+                doc_id = f"{doc.metadata.get('source', '')}:{doc.page_content[:100]}"
+                if doc_id not in all_docs_with_scores or all_docs_with_scores[doc_id][1] > score:
+                    all_docs_with_scores[doc_id] = (doc, score)
+        
+        sorted_docs = sorted(all_docs_with_scores.values(), key=lambda x: x[1])
+        return [(doc, score) for doc, score in sorted_docs[:k]]
+
+    if return_sources:
+        chain = (
+            RunnableParallel({
+                "context": lambda x: "\n\n".join([f"[文档{i+1}]: {doc.page_content}" for i, (doc, _) in enumerate(retrieve_with_scores(x))]),
+                "question": RunnablePassthrough(),
+                "sources": lambda x: retrieve_with_scores(x)
+            })
+            | prompt
+            | llm
+            | StrOutputParser()
+        )
+    else:
+        chain = (
             RunnableParallel({"context": retrieve_with_expansion, "question": RunnablePassthrough()})
             | prompt
             | llm
             | StrOutputParser()
-    )
+        )
+    
     return chain
+
+def llm_chain_stream(vector, temperature=None, top_k=None, retrieval_mode=None):
+    """流式输出的 RAG 链"""
+    llm = get_llm(temperature=temperature)
+    k = top_k or int(os.getenv("TOP_K", "5"))
+    
+    template = """你是一个专业的问答助手。请使用以下检索到的上下文信息来回答用户的问题。
+如果在上下文中找不到相关信息，请诚实地说"根据提供的文档内容，我无法回答这个问题"。
+请用简洁、准确的语言回答。
+
+问题: {question}
+上下文: {context}
+回答:"""
+    prompt = ChatPromptTemplate.from_template(template)
+
+    def retrieve_with_scores(question):
+        expanded_queries = query_expansion(question, llm)
+        
+        all_docs_with_scores = {}
+        
+        for query in expanded_queries[:3]:
+            docs_with_scores = get_retriever_with_scores(vector, query, k)
+            for doc, score in docs_with_scores:
+                doc_id = f"{doc.metadata.get('source', '')}:{doc.page_content[:100]}"
+                if doc_id not in all_docs_with_scores or all_docs_with_scores[doc_id][1] > score:
+                    all_docs_with_scores[doc_id] = (doc, score)
+        
+        sorted_docs = sorted(all_docs_with_scores.values(), key=lambda x: x[1])
+        return [(doc, score) for doc, score in sorted_docs[:k]]
+
+    def format_context(docs_with_scores):
+        context_parts = []
+        for i, (doc, score) in enumerate(docs_with_scores):
+            score_normalized = 1 / (1 + score)
+            context_parts.append(f"[文档{i+1}] (相关度: {score_normalized:.2%}): {doc.page_content}")
+        return "\n\n".join(context_parts)
+
+    chain = (
+        {
+            "context": lambda x: format_context(retrieve_with_scores(x)),
+            "question": RunnablePassthrough(),
+            "sources": lambda x: retrieve_with_scores(x)
+        }
+        | prompt
+        | llm
+    )
+    
+    return chain
+
+def stream_answer(chain, question: str) -> Iterator[str]:
+    """流式生成答案"""
+    for chunk in chain.stream(question):
+        yield chunk
+
 def llm_an(file_path, question):
     if not question:
         question = "hello"
     docs = text_chunk(file_path)
-    vetcor = chunk2vector(docs, embeddings)
+    vetcor = chunk2vector(docs, get_embeddings())
     chain = llm_chain(vetcor)
     answer = chain.invoke(question)
     return answer
+
 def interactive():
     st.title("RAG 检索增强生成系统")
 
@@ -206,7 +345,7 @@ def interactive():
 
         if operation == "构建新知识库":
             uploaded_files = st.file_uploader("上传文档", accept_multiple_files=True,
-                                         type=["txt", "pdf", "xlsx", "xls"])
+                                         type=["txt", "pdf", "xlsx", "xls", "docx", "doc"])
 
             if uploaded_files:
                 st.info(f"已上传 {len(uploaded_files)} 个文件")
@@ -230,7 +369,7 @@ def interactive():
                             docs = load_multiple_documents(file_paths)
 
                             if docs:
-                                vector_store = chunk2vector(docs, embeddings)
+                                vector_store = chunk2vector(docs, get_embeddings())
                                 vector_store.save_local("faiss_index")
                                 st.success("知识库构建成功！")
                             else:
@@ -245,7 +384,7 @@ def interactive():
                 st.warning("请先构建知识库")
             else:
                 uploaded_files = st.file_uploader("上传要添加的文档", accept_multiple_files=True,
-                                             type=["txt", "pdf", "xlsx", "xls"])
+                                             type=["txt", "pdf", "xlsx", "xls", "docx", "doc"])
 
                 if uploaded_files:
                     st.info(f"已上传 {len(uploaded_files)} 个文件")
@@ -256,7 +395,7 @@ def interactive():
                     if uploaded_files:
                         with st.spinner("正在添加文档..."):
                             try:
-                                vector_store = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
+                                vector_store = FAISS.load_local("faiss_index", get_embeddings(), allow_dangerous_deserialization=True)
 
                                 temp_dir = "temp_uploads"
                                 os.makedirs(temp_dir, exist_ok=True)
@@ -292,7 +431,7 @@ def interactive():
                 st.warning("请先构建知识库")
             else:
                 try:
-                    vector_store = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
+                    vector_store = FAISS.load_local("faiss_index", get_embeddings(), allow_dangerous_deserialization=True)
 
                     docs = vector_store.docstore.documents.values()
 
@@ -346,7 +485,7 @@ def interactive():
         return
 
     try:
-        vector_store = FAISS.load_local("faiss_index", embeddings, allow_dangerous_deserialization=True)
+        vector_store = FAISS.load_local("faiss_index", get_embeddings(), allow_dangerous_deserialization=True)
     except Exception as e:
         st.error(f"加载知识库失败: {str(e)}")
         return
