@@ -48,13 +48,25 @@
 ![IT技术系统](docs/assets/IT技术问答系统——技术问答示例（1）.jpeg)
 ![IT技术系统2](docs/assets/IT技术问答系统——技术问答示例（2）.jpeg)
 
+### 🛒 电商零售问答系统
+![电商零售系统](docs/assets/电商零售智能问答系统——电商问答示例.png)
+
+### 🏛️ 政务服务问答系统
+![政务服务系统](docs/assets/政务服务智能问答系统——政务问答示例.png)
+
+### 👔 人力资源问答系统
+![人力资源系统](docs/assets/人力资源智能问答系统——HR问答示例.png)
+
+### 📚 科研学术问答系统
+![科研学术系统](docs/assets/科研学术智能问答系统——学术问答示例.png)
+
 </div>
 
 ---
 
 ## 📚 项目简介
 
-本项目提供**六套**独立的企业级智能问答系统，均基于 RAG（Retrieval-Augmented Generation）检索增强生成技术构建，支持私有化部署和定制开发。
+本项目提供**十套**独立的企业级智能问答系统，均基于 RAG（Retrieval-Augmented Generation）检索增强生成技术构建，支持私有化部署和定制开发。
 
 ### 🌟 核心特性
 
@@ -79,6 +91,10 @@
 | **🏥 医疗健康问答系统** | `medical_qa.py` | 7871 | 健康咨询、医疗知识 |
 | **💰 金融投资问答系统** | `finance_qa.py` | 7872 | 理财咨询、金融知识 |
 | **💻 IT技术问答系统** | `tech_qa.py` | 7873 | 技术文档、API咨询 |
+| **🛒 电商零售问答系统** | `e_commerce_qa.py` | 7874 | 电商运营、商品咨询 |
+| **🏛️ 政务服务问答系统** | `government_qa.py` | 7875 | 政策解读、办事指南 |
+| **👔 人力资源问答系统** | `hr_qa.py` | 7876 | 招聘培训、员工管理 |
+| **📚 科研学术问答系统** | `academic_qa.py` | 7877 | 论文写作、文献分析 |
 
 ---
 
@@ -112,7 +128,7 @@ bash start.sh
 
 # 运行后输入数字选择要启动的系统（可多选，用逗号分隔）
 # 例如：输入 1,3,6 启动通用RAG、法律、IT技术三个系统
-# 输入 7 启动全部6个系统
+# 输入 11 启动全部10个系统
 ```
 
 ### 构建预置索引
@@ -125,7 +141,7 @@ python build_index.py
 
 该脚本会：
 - 创建示例知识库文档（医疗、教育、金融、技术等领域）
-- 为6个系统分别构建向量索引
+- 为10个系统分别构建向量索引
 - 索引文件保存在 `{system_name}_faiss_index` 目录
 
 > **注意**: 构建索引需要配置有效的 API key 或安装本地嵌入模型依赖。如果遇到问题，可以跳过此步骤，直接上传文档创建自定义知识库。
@@ -140,6 +156,10 @@ python build_index.py
 | 🏥 医疗健康 | `streamlit run medical_qa.py --server.port 7871` | http://localhost:7871 | ❌ 否（远程API） |
 | 💰 金融投资 | `streamlit run finance_qa.py --server.port 7872` | http://localhost:7872 | ❌ 否（远程API） |
 | 💻 IT技术 | `streamlit run tech_qa.py --server.port 7873` | http://localhost:7873 | ❌ 否（远程API） |
+| 🛒 电商零售 | `streamlit run e_commerce_qa.py --server.port 7874` | http://localhost:7874 | ❌ 否（远程API） |
+| 🏛️ 政务服务 | `streamlit run government_qa.py --server.port 7875` | http://localhost:7875 | ❌ 否（远程API） |
+| 👔 人力资源 | `streamlit run hr_qa.py --server.port 7876` | http://localhost:7876 | ❌ 否（远程API） |
+| 📚 科研学术 | `streamlit run academic_qa.py --server.port 7877` | http://localhost:7877 | ❌ 否（远程API） |
 
 > **GPU 说明**: 默认使用远程 LLM API，无需 GPU。如需使用本地模型（如 Llama 3、Qwen 等），建议配备 NVIDIA GPU（显存 ≥ 16GB）以获得更好的推理性能。
 
@@ -246,6 +266,38 @@ python build_index.py
 - ✅ 技术方案咨询
 - ✅ 代码错误诊断
 - ✅ 多语言代码支持
+
+### 🛒 电商零售问答系统
+- ✅ 商品知识库管理
+- ✅ 电商运营策略咨询
+- ✅ 客服话术生成
+- ✅ 营销活动策划建议
+- ✅ 商品推荐支持
+- ✅ 订单处理指南
+
+### 🏛️ 政务服务问答系统
+- ✅ 政策法规解读
+- ✅ 办事流程指南
+- ✅ 表格下载指引
+- ✅ 常见问题解答
+- ✅ 在线办事入口
+- ✅ 政务服务导航
+
+### 👔 人力资源问答系统
+- ✅ 招聘流程管理
+- ✅ 员工培训方案
+- ✅ 绩效考核支持
+- ✅ 劳动合同咨询
+- ✅ 员工福利解读
+- ✅ HR政策问答
+
+### 📚 科研学术问答系统
+- ✅ 文献检索支持
+- ✅ 论文写作指导
+- ✅ 研究方法咨询
+- ✅ 学术规范指引
+- ✅ 论文格式模板
+- ✅ 引用格式生成
 
 ---
 
