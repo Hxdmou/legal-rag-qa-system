@@ -1,3 +1,5 @@
+from dotenv import load_dotenv
+load_dotenv(override=True)
 import os
 import shutil
 from rag import load_multiple_documents, chunk2vector, get_embeddings
