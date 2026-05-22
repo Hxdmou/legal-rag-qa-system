@@ -17,7 +17,7 @@
 
 **基于 RAG（检索增强生成）技术的企业级智能问答系统解决方案**
 
-[📖 文档](README.md) | [📝 知乎文章](https://zhuanlan.zhihu.com/p/2036839001018118603) | [📊 A2A协议AI智能体PPT (带水印)](https://github.com/Hxdmou/legal-rag-qa-system/blob/main/A2A_PROTOCOL_AI_AGENT_2026_V13_%E5%B8%A6%E6%B0%B4%E5%8D%B0.pptx) | [🔌 API文档](docs/api_example.md) | [🤝 贡献](CONTRIBUTING.md) | [❓ FAQ](FAQ.md) | [📧 联系](mailto:business@rag-qa-system.com)
+[📖 文档](README.md) | [📝 知乎文章](https://zhuanlan.zhihu.com/p/2036839001018118603) | [📊 A2A协议AI智能体PPT (带水印)](https://github.com/Hxdmou/legal-rag-qa-system/raw/main/A2A_PROTOCOL_AI_AGENT_2026_V13_%E5%B8%A6%E6%B0%B4%E5%8D%B0.pptx) | [🔌 API文档](docs/api_example.md) | [🤝 贡献](CONTRIBUTING.md) | [❓ FAQ](FAQ.md) | [📧 联系](mailto:business@rag-qa-system.com)
 
 </div>
 
@@ -341,7 +341,7 @@ python build_index.py
 - GDPR/AI Act合规
 
 ### 🚀 下载链接
-- [📥 A2A协议AI智能体PPT (带水印)](https://github.com/Hxdmou/legal-rag-qa-system/blob/main/A2A_PROTOCOL_AI_AGENT_2026_V13_%E5%B8%A6%E6%B0%B4%E5%8D%B0.pptx)
+- [📥 A2A协议AI智能体PPT (带水印)](https://github.com/Hxdmou/legal-rag-qa-system/raw/main/A2A_PROTOCOL_AI_AGENT_2026_V13_%E5%B8%A6%E6%B0%B4%E5%8D%B0.pptx)
 
 ---
 
