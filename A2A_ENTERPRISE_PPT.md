@@ -624,7 +624,7 @@ spec:
     spec:
       containers:
       - name: agent
-        image: acme-corp/a2a-inventory-agent:v2.1.0
+        image: acme-corp/a2a-inventory-agent:v3.0.0
         ports:
         - containerPort: 8080
           name: http
@@ -750,7 +750,7 @@ groups:
   "timestamp": "2026-05-07T14:30:00.123Z",
   "level": "INFO",
   "service": "inventory-agent",
-  "version": "v2.1.0",
+  "version": "v3.0.0",
   "trace_id": "trace-7b3f2a9d-4c8e-4a1b-8e9c-1d3e5f7a9b2c",
   "span_id": "span-1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6d",
   "request_id": "req-20260507-12345",
