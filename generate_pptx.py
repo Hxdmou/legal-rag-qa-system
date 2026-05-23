@@ -45,7 +45,7 @@ def create_full_pptx(add_watermark_flag=True, output_filename="output.pptx"):
     fill.fore_color.rgb = RGBColor(5, 10, 25)
     
     title = slide.shapes.title
-    title.text = "A2A PROTOCOL 2.0: AI AGENT EVOLUTION ROADMAP 2026-2035"
+    title.text = "A2A协议2.0：AI智能体演进路线图（2026-2035）"
     for para in title.text_frame.paragraphs:
         for run in para.runs:
             run.font.size = Pt(22)
@@ -348,5 +348,5 @@ def create_full_pptx(add_watermark_flag=True, output_filename="output.pptx"):
     print(f"PPT文件已生成: {output_filename}")
 
 if __name__ == "__main__":
-    create_full_pptx(add_watermark_flag=True, output_filename="A2A_PROTOCOL_AI_AGENT_2026_V17_带水印.pptx")
-    create_full_pptx(add_watermark_flag=False, output_filename="A2A_PROTOCOL_AI_AGENT_2026_V17_无水印.pptx")
+    create_full_pptx(add_watermark_flag=True, output_filename="A2A协议2.0_AI智能体演进路线图_2026_V17_带水印.pptx")
+    create_full_pptx(add_watermark_flag=False, output_filename="A2A协议2.0_AI智能体演进路线图_2026_V17_无水印.pptx")
