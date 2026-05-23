@@ -16,7 +16,7 @@ def health_check():
     return jsonify({
         'status': 'healthy',
         'service': 'RAG QA System API',
-        'version': '2.0.0'
+        'version': '3.0.0'
     })
 
 @app.route('/api/ask', methods=['POST'])
