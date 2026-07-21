@@ -1,0 +1,80 @@
+"""
+IK 验证报告生成模块
+"""
+
+import math
+
+def generate_ik_report(report_filename, urdf_path, target_pos, target_orn,
+                       ik_joints, actual_ee_pos, actual_ee_euler,
+                       pos_error, pos_error_mag,
+                       baseline_joints, baseline_ee_pos,
+                       joint_indices):
+    """
+    生成 IK 验证对比报告
+    """
+    with open(report_filename, 'w', encoding='utf-8') as f:
+        f.write("=== PyBullet IK 验证报告 ===\n\n")
+        f.write(f"机械臂 URDF: {urdf_path}\n")
+        f.write(f"目标末端位置: x={target_pos[0]:.4f}, y={target_pos[1]:.4f}, z={target_pos[2]:.4f}\n")
+        f.write(f"目标末端姿态: {target_orn}\n\n")
+
+        # 1. IK 求解结果
+        f.write("--- IK 求解的关节角度 ---\n")
+        for i, pos in enumerate(ik_joints):
+            f.write(f"  关节 {i}: {pos:.4f} rad\n")
+        f.write("\n")
+
+        # 2. 应用 IK 后的实际末端位置
+        f.write("--- 应用 IK 关节角后的实际末端位置 ---\n")
+        f.write(f"  x: {actual_ee_pos[0]:.4f} m\n")
+        f.write(f"  y: {actual_ee_pos[1]:.4f} m\n")
+        f.write(f"  z: {actual_ee_pos[2]:.4f} m\n")
+        f.write(f"  姿态 (roll/pitch/yaw): {actual_ee_euler[0]:.4f}, {actual_ee_euler[1]:.4f}, {actual_ee_euler[2]:.4f}\n")
+        f.write(f"  位置误差: {pos_error_mag:.4f} m\n")
+        f.write(f"  误差分量: dx={pos_error[0]:.4f}, dy={pos_error[1]:.4f}, dz={pos_error[2]:.4f}\n\n")
+
+        # 3. 与基线数据对比
+        f.write("--- 与基线数据对比 ---\n")
+        f.write("基线关节角度（稳定状态）:\n")
+        for i, pos in enumerate(baseline_joints):
+            f.write(f"  关节 {i}: {pos:.4f} rad\n")
+        f.write("\n")
+
+        f.write("IK 求解关节角度 vs 基线关节角度:\n")
+        diff_sum = 0
+        for i in range(len(ik_joints)):
+            diff = ik_joints[i] - baseline_joints[i]
+            diff_sum += abs(diff)
+            f.write(f"  关节 {i}: IK={ik_joints[i]:.4f}, 基线={baseline_joints[i]:.4f}, 差值={diff:+.4f}\n")
+        f.write(f"  总绝对差值: {diff_sum:.4f} rad\n\n")
+
+        # 4. 诊断结论
+        f.write("--- 诊断结论 ---\n")
+        if pos_error_mag < 0.01:
+            f.write("  ✅ IK 求解成功，末端位置与目标一致。\n")
+            f.write("  问题可能不在 URDF 物理参数，而在控制策略或目标姿态的定义。\n")
+        elif pos_error_mag < 0.05:
+            f.write("  ⚠️ IK 求解存在微小误差，可能与关节限制或迭代次数有关。\n")
+            f.write("  建议增加 IK 迭代次数或检查关节限制参数。\n")
+        else:
+            f.write("  ❌ IK 求解后末端位置显著偏离目标。\n")
+            f.write("  可能原因：\n")
+            f.write("    1. URDF 物理参数（质量、重心、惯量）存在偏差\n")
+            f.write("    2. 目标位置超出机械臂可达空间\n")
+            f.write("    3. 关节限制配置不正确\n")
+            f.write("  建议：检查 URDF 文件中的物理参数，或调整目标位置。\n")
+
+        # 5. 与基线偏差对比
+        f.write("\n--- 基线偏差对比 ---\n")
+        f.write(f"基线末端位置: x={baseline_ee_pos[0]:.4f}, y={baseline_ee_pos[1]:.4f}, z={baseline_ee_pos[2]:.4f}\n")
+        baseline_error = math.sqrt((baseline_ee_pos[0] - target_pos[0])**2 +
+                                   (baseline_ee_pos[1] - target_pos[1])**2 +
+                                   (baseline_ee_pos[2] - target_pos[2])**2)
+        f.write(f"基线末端与目标偏差: {baseline_error:.4f} m\n")
+        f.write(f"IK 验证末端误差: {pos_error_mag:.4f} m\n")
+        if pos_error_mag < baseline_error:
+            f.write("  ✅ IK 验证的末端位置比基线更接近目标。\n")
+            f.write("  建议：使用 IK 求解的关节角度作为新的控制目标，验证姿态是否改善。\n")
+        else:
+            f.write("  ⚠️ IK 验证的末端位置与基线偏差接近或更大。\n")
+            f.write("  建议：检查目标位置是否合理，或进一步分析 URDF 参数。\n")
