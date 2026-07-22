@@ -46,7 +46,8 @@ class DataRecorder:
         writer.writerow([
             "timestamp", "cycle", "target_x", "target_y", "target_z",
             "current_x", "current_y", "current_z", "error_mm",
-            "cpu_percent", "mem_percent", "collisions"
+            "cpu_percent", "mem_percent", "collisions",
+            "latency_ms", "disturbances"
         ])
         self.current_file.flush()
 
@@ -84,7 +85,8 @@ class DataRecorder:
                         record["target_x"], record["target_y"], record["target_z"],
                         record["current_x"], record["current_y"], record["current_z"],
                         record["error_mm"], record["cpu_percent"],
-                        record["mem_percent"], record["collisions"]
+                        record["mem_percent"], record["collisions"],
+                        record.get("latency_ms", 0), record.get("disturbances", 0)
                     ])
                     
                     self.current_file_size += 1
@@ -92,7 +94,7 @@ class DataRecorder:
                 except Exception as e:
                     print(f"[DATA] 写入异常: {e}")
 
-    def record(self, cycle, target_pos, current_pos, error_mm, cpu_percent, mem_percent, collisions=0):
+    def record(self, cycle, target_pos, current_pos, error_mm, cpu_percent, mem_percent, collisions=0, latency_ms=0, disturbances=0):
         if not self.enabled:
             return
 
@@ -108,7 +110,9 @@ class DataRecorder:
             "error_mm": error_mm,
             "cpu_percent": cpu_percent,
             "mem_percent": mem_percent,
-            "collisions": collisions
+            "collisions": collisions,
+            "latency_ms": latency_ms,
+            "disturbances": disturbances
         }
 
         with self._lock:
@@ -168,7 +172,8 @@ class DataRecorder:
                             record["target_x"], record["target_y"], record["target_z"],
                             record["current_x"], record["current_y"], record["current_z"],
                             record["error_mm"], record["cpu_percent"],
-                            record["mem_percent"], record["collisions"]
+                            record["mem_percent"], record["collisions"],
+                            record.get("latency_ms", 0), record.get("disturbances", 0)
                         ])
                 except:
                     pass

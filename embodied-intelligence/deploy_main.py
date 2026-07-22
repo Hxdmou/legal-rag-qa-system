@@ -38,6 +38,10 @@ from robot_config import (
     START_JOINT_POSITIONS,
     CONTROL_PARAMS as ROBOT_CONTROL_PARAMS
 )
+from domain_randomization import DomainRandomizationSystem
+from latency_simulator import LatencySystem
+from actuator_dynamics import ActuatorSystem
+from disturbance_simulator import DisturbanceSystem
 
 physicsClient = None
 resource_monitor = None
@@ -50,6 +54,10 @@ collision_detector = None
 force_feedback = None
 obstacle_ids = []
 data_recorder = None
+domain_randomizer = None
+latency_system = None
+actuator_system = None
+disturbance_system = None
 running = True
 
 def signal_handler(sig, frame):
@@ -60,7 +68,7 @@ def signal_handler(sig, frame):
 signal.signal(signal.SIGINT, signal_handler)
 
 def init_environment():
-    global physicsClient, resource_monitor, robot_monitor, perf_monitor, logger, robot_adapter, noise_system, collision_detector, force_feedback, obstacle_ids, data_recorder
+    global physicsClient, resource_monitor, robot_monitor, perf_monitor, logger, robot_adapter, noise_system, collision_detector, force_feedback, obstacle_ids, data_recorder, domain_randomizer, latency_system, actuator_system, disturbance_system
 
     logger = DeployLogger()
     logger.info(f"初始化环境... (模式: {ROBOT_MODE})")
@@ -74,6 +82,43 @@ def init_environment():
 
     data_recorder = DataRecorder(DATA_RECORDER_CONFIG)
     logger.info(f"数据记录系统已加载 (启用: {data_recorder.is_enabled()})")
+
+    domain_randomizer = DomainRandomizationSystem({
+        "enabled": True,
+        "domain_randomizer": {
+            "enabled": True,
+            "randomize_interval": 60.0
+        },
+        "mass_randomizer": {"enabled": True},
+        "friction_randomizer": {"enabled": True},
+        "physics_distortion": {"enabled": True}
+    })
+    logger.info(f"领域随机化系统已加载 (启用: {domain_randomizer.is_enabled()})")
+
+    latency_system = LatencySystem({
+        "enabled": True,
+        "latency_simulator": {"enabled": True, "mean_latency_ms": 10},
+        "control_delay": {"enabled": True, "delay_ms": 8},
+        "state_delay": {"enabled": True, "delay_ms": 5},
+        "network_latency": {"enabled": True, "mean_rtt_ms": 15, "jitter_ms": 5}
+    })
+    logger.info(f"通信延迟系统已加载 (启用: {latency_system.is_enabled()})")
+
+    actuator_system = ActuatorSystem({
+        "enabled": True,
+        "actuator_dynamics": {"enabled": True, "max_torque": 50.0, "max_velocity": 3.0},
+        "motor_model": {"enabled": True},
+        "joint_constraint": {"enabled": True, "max_force": 50.0}
+    })
+    logger.info(f"执行器动力学系统已加载 (启用: {actuator_system.is_enabled()})")
+
+    disturbance_system = DisturbanceSystem({
+        "enabled": True,
+        "disturbance_simulator": {"enabled": True},
+        "impact_simulator": {"enabled": True},
+        "load_simulator": {"enabled": True}
+    })
+    logger.info(f"外部扰动系统已加载 (启用: {disturbance_system.is_enabled()})")
 
     robot_config = {
         "joint_indices": JOINT_INDICES,
@@ -335,7 +380,25 @@ def deploy_loop(config):
     while running:
         try:
             cycle_count += 1
+
+            # 领域随机化 - 周期性执行
+            if domain_randomizer and ROBOT_MODE == "sim":
+                randomize_result = domain_randomizer.check_and_randomize(config["robot_id"], config["joint_indices"])
+                if randomize_result:
+                    logger.info(f"领域随机化已执行: {randomize_result}")
+
+            # 应用通信延迟
+            if latency_system:
+                latency_system.apply_control_latency()
+
             error = execute_task(config, target_pos)
+
+            # 应用外部扰动
+            if disturbance_system and ROBOT_MODE == "sim":
+                disturbances = disturbance_system.apply_disturbances(config["robot_id"], config["ee_index"])
+                if disturbances:
+                    for d in disturbances:
+                        logger.info(f"扰动已应用: {d['type']}")
 
             passed = error < 0.02
             if passed:
@@ -349,6 +412,11 @@ def deploy_loop(config):
             collision_stats = collision_detector.get_collision_stats() if collision_detector else {}
             if collision_detector:
                 collision_detector.update()
+
+            # 获取延迟统计
+            latency_stats = latency_system.get_stats() if latency_system else {}
+            actuator_stats = actuator_system.get_stats() if actuator_system else {}
+            disturbance_stats = disturbance_system.get_stats() if disturbance_system else {}
 
             print(f"[DEPLOY] 循环 {cycle_count}: 误差 {error*1000:.2f}mm | "
                   f"CPU: {stats['cpu_current']:.1f}% | MEM: {stats['mem_current']:.1f}% | "
@@ -369,7 +437,9 @@ def deploy_loop(config):
                     error_mm=error * 1000,
                     cpu_percent=stats["cpu_current"],
                     mem_percent=stats["mem_current"],
-                    collisions=collision_stats.get("recent_collisions", 0)
+                    collisions=collision_stats.get("recent_collisions", 0),
+                    latency_ms=latency_stats.get("latency_simulator", {}).get("avg_latency_ms", 0),
+                    disturbances=len(disturbance_stats.get("disturbance_simulator", {}).get("total_disturbances", 0))
                 )
 
             if cycle_count % 10 == 0:
@@ -377,6 +447,14 @@ def deploy_loop(config):
                 if perf_summary:
                     logger.info("性能统计", avg_cpu=perf_summary["avg_cpu"],
                                avg_memory=perf_summary["avg_memory"])
+
+                # 输出随机化和扰动统计
+                if domain_randomizer:
+                    dr_stats = domain_randomizer.get_stats()
+                    logger.info("领域随机化统计", **dr_stats)
+                if disturbance_system:
+                    ds_stats = disturbance_system.get_stats()
+                    logger.info("扰动统计", **ds_stats)
 
             time.sleep(0.5)
 
@@ -395,7 +473,7 @@ def deploy_loop(config):
         perf_monitor.save_report()
 
 def cleanup():
-    global physicsClient, resource_monitor, perf_monitor, logger, robot_adapter, collision_detector, data_recorder
+    global physicsClient, resource_monitor, perf_monitor, logger, robot_adapter, collision_detector, data_recorder, domain_randomizer, latency_system, actuator_system, disturbance_system
 
     print("\n[DEPLOY] 清理资源...")
 
@@ -415,6 +493,24 @@ def cleanup():
 
     if collision_detector:
         collision_detector.stop_monitoring()
+
+    if domain_randomizer:
+        domain_randomizer.disable()
+        print("[DR] 领域随机化系统已禁用")
+
+    if latency_system:
+        latency_system.disable()
+        print("[LATENCY] 通信延迟系统已禁用")
+
+    if actuator_system:
+        actuator_system.reset()
+        actuator_system.disable()
+        print("[ACTUATOR] 执行器动力学系统已重置")
+
+    if disturbance_system:
+        disturbance_system.reset()
+        disturbance_system.disable()
+        print("[DISTURBANCE] 外部扰动系统已重置")
 
     if robot_adapter:
         robot_adapter.shutdown()
