@@ -322,10 +322,7 @@ class EnhancedRobotReachEnv:
         
         # 应用传感器噪声到关节状态
         if self.noise_system.is_enabled():
-            noisy_pos = []
-            for i, pos in enumerate(joint_pos):
-                noisy_pos.append(self.noise_system.apply_joint_noise(i, pos))
-            joint_pos = np.array(noisy_pos, dtype=np.float32)
+            joint_pos = np.array(self.noise_system.apply_joint_noise(joint_pos.tolist()), dtype=np.float32)
 
         ee_pos = np.array(p.getLinkState(self.robot_id, 6)[0], dtype=np.float32)
         
@@ -496,26 +493,22 @@ if __name__ == "__main__":
     print(f"   ✅ 外部扰动仿真 (周期性力: 2N)")
     print(f"   ✅ 传感器噪声 (高斯噪声: 0.5mm)")
 
-    # 创建并行环境
-    print(f"\nCreating {n_envs} parallel environments...")
+    # 创建并行环境（Windows使用DummyVecEnv）
+    from stable_baselines3.common.vec_env import DummyVecEnv
+    print(f"\nCreating {n_envs} parallel environments (DummyVecEnv)...")
     try:
-        env = SubprocVecEnv([make_env(i) for i in range(n_envs)])
+        env = DummyVecEnv([make_env(i) for i in range(n_envs)])
         env = VecMonitor(env)
         print(f"   Successfully created {n_envs} environments")
     except Exception as e:
         print(f"   ERROR: {e}")
-        n_envs = 2
-        print(f"   Falling back to {n_envs} environments...")
-        env = SubprocVecEnv([make_env(i) for i in range(n_envs)])
+        n_envs = 1
+        print(f"   Falling back to {n_envs} environment...")
+        env = DummyVecEnv([make_env(0)])
         env = VecMonitor(env)
 
     # 评估环境
-    from stable_baselines3.common.env_util import make_vec_env
-    eval_env = make_vec_env(
-        lambda: EnhancedRobotReachEnv(render_mode=None, max_steps=500),
-        n_envs=1,
-        vec_env_cls=None
-    )
+    eval_env = DummyVecEnv([lambda: EnhancedRobotReachEnv(render_mode=None, max_steps=500)])
     eval_env = VecMonitor(eval_env)
 
     # Callbacks
