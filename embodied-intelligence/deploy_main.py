@@ -87,11 +87,15 @@ def init_environment():
         "enabled": True,
         "domain_randomizer": {
             "enabled": True,
-            "randomize_interval": 60.0
+            "randomize_interval": 120.0,
+            "friction_range": [0.4, 0.6],
+            "damping_range": [0.02, 0.08],
+            "mass_range": [0.95, 1.05],
+            "gravity_range": [-9.85, -9.75]
         },
-        "mass_randomizer": {"enabled": True},
-        "friction_randomizer": {"enabled": True},
-        "physics_distortion": {"enabled": True}
+        "mass_randomizer": {"enabled": False},
+        "friction_randomizer": {"enabled": False},
+        "physics_distortion": {"enabled": False}
     })
     logger.info(f"领域随机化系统已加载 (启用: {domain_randomizer.is_enabled()})")
 
@@ -439,7 +443,7 @@ def deploy_loop(config):
                     mem_percent=stats["mem_current"],
                     collisions=collision_stats.get("recent_collisions", 0),
                     latency_ms=latency_stats.get("latency_simulator", {}).get("avg_latency_ms", 0),
-                    disturbances=len(disturbance_stats.get("disturbance_simulator", {}).get("total_disturbances", 0))
+                    disturbances=disturbance_stats.get("disturbance_simulator", {}).get("total_disturbances", 0)
                 )
 
             if cycle_count % 10 == 0:
