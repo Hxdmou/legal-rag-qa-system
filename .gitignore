@@ -1,31 +1,32 @@
-# Python
+# ===== Python =====
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+*.pyc
+*.pyo
+*.pyd
 
-# Virtual environments (非常大，必须排除)
+# ===== Virtual environments =====
 env_isaacsim/
 env_pybullet/
 venv/
 env/
 .venv/
 
-# Distribution / packaging
+# ===== Distribution / packaging =====
 dist/
 build/
 *.egg-info/
 *.egg
-
-# PyInstaller
 *.manifest
 *.spec
 
-# Installer logs
+# ===== Installer logs =====
 pip-log.txt
 pip-delete-this-directory.txt
 
-# Unit test & coverage
+# ===== Unit test & coverage =====
 htmlcov/
 .tox/
 .coverage
@@ -36,23 +37,56 @@ coverage.xml
 *.cover
 .pytest_cache/
 
-# IDE
+# ===== IDE =====
 .vscode/
 .idea/
 *.swp
 *.swo
+*~
 
-# OS
+# ===== OS =====
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Debug logs
+# ===== Debug logs & temp =====
 debug.log
-
-# Temp files
+*.log
 *.tmp
 *.bak
-
-# Windows shortcuts
 *.lnk
+
+# ===== Environment variables =====
+.env
+.env.local
+.env.*.local
+
+# ===== Streamlit/Gradio cache =====
+.streamlit/
+.gradio/
+
+# ===== Trae IDE settings =====
+.trae/
+
+# ===== Chat history (user privacy) =====
+chat_histories/
+
+# ===== Legal documents =====
+legal_knowledge_base/
+
+# ===== FAISS index =====
+*_faiss_index/
+
+# ===== 注意：以下通配符规则只匹配根目录（法律RAG系统），不影响 embodied-intelligence/ 子目录 =====
+/*.json
+/*.csv
+/*.txt
+/*.pdf
+
+# ===== Model files (large binary) - 只匹配根目录 =====
+/*.bin
+/*.pth
+/*.pt
+/*.h5
+/*.joblib
+/*.pkl
