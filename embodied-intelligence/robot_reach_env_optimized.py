@@ -1,16 +1,16 @@
 """
-优化版机械臂到达环境
+优化版机械臂到达环境 - 课程学习增强版
 优化内容：
-1. 缩小目标范围到更容易到达的区域
-2. Dense reward shaping - 进度驱动奖励
-3. 混合采样策略：50%薄弱区域 + 50%全范围
+1. 极致精简：无目标可视化、无动态目标、无薄弱区域采样
+2. Dense reward shaping - 进度驱动奖励，最大化平均奖励
+3. 优化物理参数：更小时间步、更少物理步数
 4. 抑制PyBullet警告提升FPS
+5. 课程学习支持：渐进式引入增强模块
 """
 
 import os
 import sys
 
-# 抑制PyBullet警告，大幅提升FPS（必须在导入pybullet之前设置）
 os.environ['PYBULLET_DISABLE_WARNINGS'] = '1'
 
 import gymnasium as gym
@@ -22,7 +22,7 @@ import gc
 
 
 class RobotReachEnvOptimized(gym.Env):
-    """优化版机械臂到达环境"""
+    """优化版机械臂到达环境 - 课程学习增强版"""
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 60}
 
@@ -33,22 +33,18 @@ class RobotReachEnvOptimized(gym.Env):
         self.max_steps = max_steps
         self.step_count = 0
 
-        # 重定向stderr到/dev/null以抑制PyBullet警告，大幅提升FPS
         if render_mode != "human":
             self._original_stderr = sys.stderr
             sys.stderr = open(os.devnull, "w")
 
-        # 动作空间
         self.action_space = spaces.Box(
             low=-1.0, high=1.0, shape=(7,), dtype=np.float32
         )
 
-        # 观测空间 - 关节位置(7)+末端位置(3)+目标位置(3) = 13维
         self.observation_space = spaces.Box(
             low=-np.inf, high=np.inf, shape=(13,), dtype=np.float32
         )
 
-        # 连接物理引擎
         if render_mode == "human":
             self.physics_client = p.connect(p.GUI)
             p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
@@ -57,66 +53,139 @@ class RobotReachEnvOptimized(gym.Env):
 
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         p.setGravity(0, 0, -9.81)
-        p.setTimeStep(1 / 120.0)
+        p.setTimeStep(1 / 240.0)
 
         self.robot_id = None
         self.target_pos = None
 
-        # 优化后的超参数 - 纯成功导向奖励
-        self.action_scale = 0.15  # 更大动作步长，让机械臂更快到达目标
-        self.reach_threshold = 0.35  # 更宽松的成功阈值
-        self.reach_reward = 1500.0  # 超大到达奖励
-        self.action_penalty = 0.0  # 无动作惩罚
-        self.progress_reward_scale = 150.0  # 超大进度奖励
-        self.survival_reward = 0.0  # 无生存惩罚
-        self.sub_steps = 1  # 极致性能：最小物理步数
-        
-        # 精细奖励结构
-        self.precision_reward_scale = 50.0  # 精度奖励系数（越靠近目标奖励越高）
-        self.speed_bonus = 100.0  # 速度奖励（快速到达奖励）
-        self.direction_bonus_scale = 20.0  # 方向奖励系数
+        self.action_scale = 0.20
+        self.reach_threshold = 0.30
+        self.reach_reward = 2000.0
+        self.action_penalty = 0.0
+        self.progress_reward_scale = 200.0
+        self.survival_reward = 0.0
+        self.sub_steps = 1
 
-        # 领域随机化参数（默认关闭，训练时启用）
-        self.domain_randomization = False
-        self.friction_range = (0.95, 1.05)  # 极小范围
-        self.damping_range = (0.04, 0.06)  # 极小范围
-        self.mass_range = (0.95, 1.05)  # 极小范围
-        self.gravity_range = (-9.85, -9.75)  # 极小范围
+        # ==================== 课程学习参数 ====================
+        self.curriculum_progress = 0.0
 
-        # 执行器动力学参数（默认关闭，训练时启用）
-        self.actuator_dynamics = False
-        self.torque_limit = 200.0  # 增大力矩上限
-        self.velocity_limit = 5.0  # 增大速度上限
-        self.dead_zone = 0.005  # 减小死区
+        # ==================== 领域随机化参数 ====================
+        # 基础范围（微弱）
+        self.friction_base_range = (0.98, 1.02)
+        self.damping_base_range = (0.045, 0.055)
+        self.mass_base_range = (0.98, 1.02)
+        self.gravity_base_range = (-9.82, -9.80)
+        # 最大范围（强烈）
+        self.friction_max_range = (0.80, 1.20)
+        self.damping_max_range = (0.01, 0.10)
+        self.mass_max_range = (0.80, 1.20)
+        self.gravity_max_range = (-10.0, -9.6)
 
-        # 外部扰动参数（默认关闭，训练时启用）
-        self.external_disturbance = False
-        self.disturbance_prob = 0.005  # 大幅降低扰动概率
-        self.disturbance_magnitude = 5.0  # 减小扰动力度
+        # ==================== 执行器动力学参数 ====================
+        # 基础值（宽松）
+        self.torque_base_limit = 200.0
+        self.velocity_base_limit = 5.0
+        self.dead_zone_base = 0.001
+        # 最大值（严格）
+        self.torque_max_limit = 50.0
+        self.velocity_max_limit = 1.5
+        self.dead_zone_max = 0.02
 
-        # 目标范围（全范围）
-        self.target_min = np.array([0.35, -0.15, 0.25], dtype=np.float32)
-        self.target_max = np.array([0.55, 0.15, 0.45], dtype=np.float32)
+        # ==================== 外部扰动参数 ====================
+        # 基础值（微弱）
+        self.disturbance_base_prob = 0.001
+        self.disturbance_base_magnitude = 2.0
+        # 最大值（强烈）
+        self.disturbance_max_prob = 0.05
+        self.disturbance_max_magnitude = 15.0
+
+        # ==================== 当前使用的参数 ====================
+        self.friction_range = self.friction_base_range
+        self.damping_range = self.damping_base_range
+        self.mass_range = self.mass_base_range
+        self.gravity_range = self.gravity_base_range
+        self.torque_limit = self.torque_base_limit
+        self.velocity_limit = self.velocity_base_limit
+        self.dead_zone = self.dead_zone_base
+        self.disturbance_prob = self.disturbance_base_prob
+        self.disturbance_magnitude = self.disturbance_base_magnitude
+
+        self.target_min = np.array([0.40, -0.10, 0.30], dtype=np.float32)
+        self.target_max = np.array([0.50, 0.10, 0.40], dtype=np.float32)
 
         self.stable_count = 0
-        self.stable_threshold = 2  # 更容易达到稳定条件
+        self.stable_threshold = 2
 
-        # 上一步距离（用于计算进度奖励）
         self.last_distance = None
+
+    def set_curriculum_progress(self, progress):
+        """设置课程学习进度 (0.0 - 1.0)"""
+        self.curriculum_progress = np.clip(progress, 0.0, 1.0)
+
+        # 根据进度更新增强模块参数
+        p = self.curriculum_progress
+
+        # ===== 领域随机化 =====
+        if p >= 0.1:
+            # 线性插值从基础范围到最大范围
+            self.friction_range = self._interpolate_range(p, 0.1, 0.9, 
+                self.friction_base_range, self.friction_max_range)
+            self.damping_range = self._interpolate_range(p, 0.1, 0.9,
+                self.damping_base_range, self.damping_max_range)
+            self.mass_range = self._interpolate_range(p, 0.1, 0.9,
+                self.mass_base_range, self.mass_max_range)
+            self.gravity_range = self._interpolate_range(p, 0.1, 0.9,
+                self.gravity_base_range, self.gravity_max_range)
+
+        # ===== 执行器动力学 =====
+        if p >= 0.3:
+            # 力矩限制从宽松到严格
+            self.torque_limit = self._interpolate(p, 0.3, 0.9,
+                self.torque_base_limit, self.torque_max_limit)
+            # 速度限制从宽松到严格
+            self.velocity_limit = self._interpolate(p, 0.3, 0.9,
+                self.velocity_base_limit, self.velocity_max_limit)
+            # 死区从小到大
+            self.dead_zone = self._interpolate(p, 0.3, 0.9,
+                self.dead_zone_base, self.dead_zone_max)
+
+        # ===== 外部扰动 =====
+        if p >= 0.5:
+            # 扰动概率从低到高
+            self.disturbance_prob = self._interpolate(p, 0.5, 0.9,
+                self.disturbance_base_prob, self.disturbance_max_prob)
+            # 扰动强度从小到大
+            self.disturbance_magnitude = self._interpolate(p, 0.5, 0.9,
+                self.disturbance_base_magnitude, self.disturbance_max_magnitude)
+
+    def _interpolate(self, p, start_p, end_p, start_val, end_val):
+        """线性插值"""
+        if p < start_p:
+            return start_val
+        if p >= end_p:
+            return end_val
+        t = (p - start_p) / (end_p - start_p)
+        return start_val + t * (end_val - start_val)
+
+    def _interpolate_range(self, p, start_p, end_p, start_range, end_range):
+        """对范围进行线性插值"""
+        min_val = self._interpolate(p, start_p, end_p, start_range[0], end_range[0])
+        max_val = self._interpolate(p, start_p, end_p, start_range[1], end_range[1])
+        return (min_val, max_val)
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
 
         p.resetSimulation()
-        p.setTimeStep(1 / 120.0)
+        p.setTimeStep(1 / 240.0)
         p.loadURDF("plane.urdf")
 
         self.robot_id = p.loadURDF(
             "kuka_iiwa/model.urdf", [0, 0, 0], useFixedBase=True
         )
 
-        # 领域随机化：每次reset时随机化物理参数
-        if self.domain_randomization:
+        # 根据课程学习进度应用领域随机化
+        if self.curriculum_progress >= 0.1:
             gravity_z = self.np_random.uniform(*self.gravity_range)
             p.setGravity(0, 0, gravity_z)
             
@@ -130,23 +199,20 @@ class RobotReachEnvOptimized(gym.Env):
         else:
             p.setGravity(0, 0, -9.81)
 
-        # 采样目标位置
         self.target_pos = self.np_random.uniform(self.target_min, self.target_max).astype(np.float32)
 
-        # 缩小初始关节随机范围
         for i in range(7):
             p.resetJointState(
                 self.robot_id, i,
-                self.np_random.uniform(-0.1, 0.1)
+                self.np_random.uniform(-0.05, 0.05)
             )
 
         self.step_count = 0
         self.stable_count = 0
 
-        for _ in range(3):
+        for _ in range(2):
             p.stepSimulation()
 
-        # 初始化上一步距离
         ee_pos = np.array(p.getLinkState(self.robot_id, 6)[0])
         self.last_distance = np.linalg.norm(ee_pos - self.target_pos)
 
@@ -155,21 +221,47 @@ class RobotReachEnvOptimized(gym.Env):
     def step(self, action):
         action = np.clip(action, -1.0, 1.0) * self.action_scale
 
+        # 执行器动力学：死区处理
+        if self.curriculum_progress >= 0.3:
+            action = np.where(np.abs(action) < self.dead_zone, 0, action)
+
         states = p.getJointStates(self.robot_id, range(7))
         current_positions = np.array([s[0] for s in states])
+        current_velocities = np.array([s[1] for s in states])
 
         target_positions = current_positions + action
 
+        # 执行器动力学：速度限制
+        if self.curriculum_progress >= 0.3:
+            delta_pos = action
+            max_delta = self.velocity_limit * (1 / 240.0)
+            delta_pos = np.clip(delta_pos, -max_delta, max_delta)
+            target_positions = current_positions + delta_pos
+
         for i in range(7):
+            force = self.torque_limit if self.curriculum_progress >= 0.3 else 240
             p.setJointMotorControl2(
                 self.robot_id, i,
                 p.POSITION_CONTROL,
                 targetPosition=target_positions[i],
-                force=240
+                force=force
             )
 
         for _ in range(self.sub_steps):
             p.stepSimulation()
+
+        # 外部扰动
+        if self.curriculum_progress >= 0.5:
+            if self.np_random.random() < self.disturbance_prob:
+                disturbance = self.np_random.uniform(-self.disturbance_magnitude, 
+                                                    self.disturbance_magnitude, 
+                                                    size=3)
+                p.applyExternalForce(
+                    self.robot_id, 6,
+                    forceObj=disturbance,
+                    posObj=np.array(p.getLinkState(self.robot_id, 6)[0]),
+                    flags=p.WORLD_FRAME
+                )
 
         self.step_count += 1
 
@@ -177,23 +269,19 @@ class RobotReachEnvOptimized(gym.Env):
         ee_pos = np.array(p.getLinkState(self.robot_id, 6)[0])
         dist = np.linalg.norm(ee_pos - self.target_pos)
 
-        # Dense Reward Shaping - 精简奖励结构
         reward = 0.0
 
-        # 1. 进度奖励：靠近目标给正奖励，远离给负奖励
         if self.last_distance is not None:
             distance_change = self.last_distance - dist
             reward += distance_change * self.progress_reward_scale
         
-        # 更新上一步距离
         self.last_distance = dist
 
-        # 2. 到达奖励：到达目标给大奖励
         if dist < self.reach_threshold:
             self.stable_count += 1
-            reward += 50.0  # 每步保持在目标附近的奖励
+            reward += 100.0
             if self.stable_count >= self.stable_threshold:
-                reward += self.reach_reward  # 成功到达大奖励
+                reward += self.reach_reward
                 terminated = True
             else:
                 terminated = False
@@ -207,7 +295,8 @@ class RobotReachEnvOptimized(gym.Env):
             "distance": dist,
             "success": terminated,
             "step": self.step_count,
-            "target_pos": self.target_pos.copy()
+            "target_pos": self.target_pos.copy(),
+            "curriculum_progress": self.curriculum_progress
         }
 
         return obs, reward, terminated, truncated, info
