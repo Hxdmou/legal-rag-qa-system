@@ -24,7 +24,7 @@ def make_env(rank, seed=0, max_steps=600):
         env = RobotReachEnvOptimized(render_mode=None, max_steps=max_steps)
         env.curriculum_progress = 0.0
         env._update_curriculum_target_range()
-        env.domain_randomization = True
+        env.domain_randomization = False
         env.actuator_dynamics = False
         env.external_disturbance = False
         env.reset(seed=seed + rank)
@@ -127,7 +127,7 @@ if __name__ == "__main__":
     test_env = RobotReachEnvOptimized(render_mode=None, max_steps=600)
     test_env.curriculum_progress = 0.0
     test_env._update_curriculum_target_range()
-    test_env.domain_randomization = True
+    test_env.domain_randomization = False
     test_env.actuator_dynamics = False
     test_env.external_disturbance = False
     

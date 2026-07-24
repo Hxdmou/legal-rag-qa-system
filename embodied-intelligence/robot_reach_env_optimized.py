@@ -45,9 +45,9 @@ class RobotReachEnvOptimized(gym.Env):
             low=-1.0, high=1.0, shape=(7,), dtype=np.float32
         )
 
-        # 观测空间
+        # 观测空间 - 关节位置(7)+末端位置(3)+目标位置(3) = 13维
         self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(20,), dtype=np.float32
+            low=-np.inf, high=np.inf, shape=(13,), dtype=np.float32
         )
 
         # 连接物理引擎
@@ -79,21 +79,21 @@ class RobotReachEnvOptimized(gym.Env):
         self.speed_bonus = 100.0  # 速度奖励（快速到达奖励）
         self.direction_bonus_scale = 20.0  # 方向奖励系数
 
-        # 领域随机化参数（极弱强度，确保成功率）
-        self.domain_randomization = True
+        # 领域随机化参数（默认关闭，训练时启用）
+        self.domain_randomization = False
         self.friction_range = (0.95, 1.05)  # 极小范围
         self.damping_range = (0.04, 0.06)  # 极小范围
         self.mass_range = (0.95, 1.05)  # 极小范围
         self.gravity_range = (-9.85, -9.75)  # 极小范围
 
-        # 执行器动力学参数（降低限制）
-        self.actuator_dynamics = True
+        # 执行器动力学参数（默认关闭，训练时启用）
+        self.actuator_dynamics = False
         self.torque_limit = 200.0  # 增大力矩上限
         self.velocity_limit = 5.0  # 增大速度上限
         self.dead_zone = 0.005  # 减小死区
 
-        # 外部扰动参数（降低概率）
-        self.external_disturbance = True
+        # 外部扰动参数（默认关闭，训练时启用）
+        self.external_disturbance = False
         self.disturbance_prob = 0.005  # 大幅降低扰动概率
         self.disturbance_magnitude = 5.0  # 减小扰动力度
 
@@ -279,47 +279,21 @@ class RobotReachEnvOptimized(gym.Env):
     def step(self, action):
         action = np.clip(action, -1.0, 1.0) * self.action_scale
 
-        # 执行器动力学：死区处理
-        if self.actuator_dynamics:
-            action = np.where(np.abs(action) < self.dead_zone, 0.0, action)
-
         states = p.getJointStates(self.robot_id, range(7))
         current_positions = np.array([s[0] for s in states])
-        current_velocities = np.array([s[1] for s in states])
 
         target_positions = current_positions + action
-        
-        # 执行器动力学：速度限制
-        if self.actuator_dynamics:
-            delta_pos = action
-            delta_pos = np.clip(delta_pos, -self.velocity_limit * (1/240.0), self.velocity_limit * (1/240.0))
-            target_positions = current_positions + delta_pos
 
         for i in range(7):
-            if self.actuator_dynamics:
-                p.setJointMotorControl2(
-                    self.robot_id, i,
-                    p.POSITION_CONTROL,
-                    targetPosition=target_positions[i],
-                    force=self.torque_limit,
-                    maxVelocity=self.velocity_limit
-                )
-            else:
-                p.setJointMotorControl2(
-                    self.robot_id, i,
-                    p.POSITION_CONTROL,
-                    targetPosition=target_positions[i],
-                    force=240
-                )
+            p.setJointMotorControl2(
+                self.robot_id, i,
+                p.POSITION_CONTROL,
+                targetPosition=target_positions[i],
+                force=240
+            )
 
         for _ in range(self.sub_steps):
             p.stepSimulation()
-
-        # 外部扰动：随机施加外力
-        if self.external_disturbance and self.np_random.random() < self.disturbance_prob:
-            link_idx = self.np_random.integers(0, 7)
-            force = self.np_random.uniform(-self.disturbance_magnitude, self.disturbance_magnitude, size=3)
-            p.applyExternalForce(self.robot_id, link_idx, force, [0, 0, 0], p.WORLD_FRAME)
 
         self.step_count += 1
 
@@ -329,7 +303,7 @@ class RobotReachEnvOptimized(gym.Env):
         ee_pos = np.array(p.getLinkState(self.robot_id, 6)[0])
         dist = np.linalg.norm(ee_pos - self.target_pos)
 
-        # Dense Reward Shaping - 精细奖励结构
+        # Dense Reward Shaping - 精简奖励结构
         reward = 0.0
 
         # 1. 进度奖励：靠近目标给正奖励，远离给负奖励
@@ -340,21 +314,12 @@ class RobotReachEnvOptimized(gym.Env):
         # 更新上一步距离
         self.last_distance = dist
 
-        # 2. 精度奖励：越靠近目标奖励越高（指数衰减）
-        reward += np.exp(-dist * 5) * self.precision_reward_scale
-
-        # 3. 方向奖励：如果正在朝目标移动，给予额外奖励
-        if self.last_distance is not None and dist < self.last_distance:
-            reward += self.direction_bonus_scale
-
-        # 4. 到达奖励：到达目标给大奖励
+        # 2. 到达奖励：到达目标给大奖励
         if dist < self.reach_threshold:
             self.stable_count += 1
             reward += 50.0  # 每步保持在目标附近的奖励
             if self.stable_count >= self.stable_threshold:
                 reward += self.reach_reward  # 成功到达大奖励
-                # 速度奖励：步数越少奖励越高
-                reward += max(0, self.speed_bonus - self.step_count * 0.1)
                 terminated = True
             else:
                 terminated = False
@@ -376,11 +341,10 @@ class RobotReachEnvOptimized(gym.Env):
     def _get_obs(self):
         states = p.getJointStates(self.robot_id, range(7))
         joint_pos = np.array([s[0] for s in states], dtype=np.float32)
-        joint_vel = np.array([s[1] for s in states], dtype=np.float32)
         ee_pos = np.array(p.getLinkState(self.robot_id, 6)[0], dtype=np.float32)
 
         return np.concatenate([
-            joint_pos, joint_vel, ee_pos, self.target_pos
+            joint_pos, ee_pos, self.target_pos
         ], dtype=np.float32)
 
     def render(self):
