@@ -26,14 +26,12 @@ class RobotReachEnvOptimized(gym.Env):
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 60}
 
-    def __init__(self, render_mode=None, max_steps=400, use_weighted_sampling=True, dynamic_target=False):
+    def __init__(self, render_mode=None, max_steps=400):
         super().__init__()
 
         self.render_mode = render_mode
         self.max_steps = max_steps
         self.step_count = 0
-        self.use_weighted_sampling = use_weighted_sampling
-        self.dynamic_target = dynamic_target
 
         # 重定向stderr到/dev/null以抑制PyBullet警告，大幅提升FPS
         if render_mode != "human":
@@ -63,14 +61,13 @@ class RobotReachEnvOptimized(gym.Env):
 
         self.robot_id = None
         self.target_pos = None
-        self.target_body_id = None
 
         # 优化后的超参数 - 纯成功导向奖励
         self.action_scale = 0.15  # 更大动作步长，让机械臂更快到达目标
-        self.reach_threshold = 0.30  # 更宽松的成功阈值
-        self.reach_reward = 1000.0  # 超大到达奖励
+        self.reach_threshold = 0.35  # 更宽松的成功阈值
+        self.reach_reward = 1500.0  # 超大到达奖励
         self.action_penalty = 0.0  # 无动作惩罚
-        self.progress_reward_scale = 100.0  # 超大进度奖励
+        self.progress_reward_scale = 150.0  # 超大进度奖励
         self.survival_reward = 0.0  # 无生存惩罚
         self.sub_steps = 1  # 极致性能：最小物理步数
         
@@ -97,124 +94,18 @@ class RobotReachEnvOptimized(gym.Env):
         self.disturbance_prob = 0.005  # 大幅降低扰动概率
         self.disturbance_magnitude = 5.0  # 减小扰动力度
 
-        # 课程学习进度 - 默认全范围目标
-        self.curriculum_progress = 1.0  # 0.0-1.0，使用全范围
-        self._update_curriculum_target_range()
+        # 目标范围（全范围）
+        self.target_min = np.array([0.35, -0.15, 0.25], dtype=np.float32)
+        self.target_max = np.array([0.55, 0.15, 0.45], dtype=np.float32)
 
-        # 动态目标相关参数
-        self.trajectory_type = None
-        self.trajectory_params = None
-        self.target_speed = None
         self.stable_count = 0
         self.stable_threshold = 2  # 更容易达到稳定条件
 
         # 上一步距离（用于计算进度奖励）
         self.last_distance = None
 
-    def _update_curriculum_target_range(self):
-        """根据课程学习进度更新目标范围"""
-        # 基础范围（简单）：近距离目标
-        base_min = np.array([0.40, -0.10, 0.30], dtype=np.float32)
-        base_max = np.array([0.50, 0.10, 0.40], dtype=np.float32)
-        
-        # 全范围（困难）：扩展目标区域
-        full_min = np.array([0.25, -0.25, 0.20], dtype=np.float32)
-        full_max = np.array([0.65, 0.25, 0.55], dtype=np.float32)
-        
-        # 根据进度线性插值
-        self.target_min = base_min + self.curriculum_progress * (full_min - base_min)
-        self.target_max = base_max + self.curriculum_progress * (full_max - base_max)
-        
-        # 薄弱区域范围
-        self.weak_min = np.array([0.25, -0.25, 0.30], dtype=np.float32)
-        self.weak_max = np.array([0.40, 0.25, 0.55], dtype=np.float32)
-
-    def _sample_target(self):
-        """快速采样目标（直接采样，跳过IK可达性检查）"""
-        if self.use_weighted_sampling and self.np_random.random() < 0.5:
-            return self.np_random.uniform(self.weak_min, self.weak_max).astype(np.float32)
-        else:
-            return self.np_random.uniform(self.target_min, self.target_max).astype(np.float32)
-
-    def _generate_trajectory(self):
-        """生成动态目标轨迹"""
-        self.trajectory_type = self.np_random.choice(['linear', 'sinusoidal'])
-        self.target_speed = self.np_random.uniform(0.05, 0.1)
-
-        if self.trajectory_type == 'linear':
-            start_pos = self._sample_target()
-            direction = self.np_random.uniform(-1, 1, size=3)
-            direction = direction / np.linalg.norm(direction)
-            max_distance = 0.3
-            end_pos = start_pos + direction * max_distance
-            end_pos = np.clip(end_pos, self.target_min, self.target_max)
-            self.trajectory_params = {
-                'start': start_pos,
-                'end': end_pos,
-                'total_time': np.linalg.norm(end_pos - start_pos) / self.target_speed
-            }
-            return start_pos
-
-        else:
-            center = self._sample_target()
-            amplitude = np.array([
-                self.np_random.uniform(0.05, 0.15),
-                self.np_random.uniform(0.05, 0.15),
-                self.np_random.uniform(0.05, 0.10)
-            ])
-            frequency = self.np_random.uniform(0.5, 1.5)
-            self.trajectory_params = {
-                'center': center,
-                'amplitude': amplitude,
-                'frequency': frequency
-            }
-            return center
-
-    def _update_target_position(self):
-        """根据轨迹更新目标位置"""
-        if not self.dynamic_target or self.trajectory_type is None:
-            return
-
-        elapsed_time = self.step_count * (1 / 240.0) * self.sub_steps
-
-        if self.trajectory_type == 'linear':
-            start = self.trajectory_params['start']
-            end = self.trajectory_params['end']
-            total_time = self.trajectory_params['total_time']
-
-            if total_time > 0:
-                t = min(elapsed_time / total_time, 1.0)
-            else:
-                t = 1.0
-
-            new_pos = start + t * (end - start)
-
-        else:
-            center = self.trajectory_params['center']
-            amplitude = self.trajectory_params['amplitude']
-            frequency = self.trajectory_params['frequency']
-
-            new_pos = center + amplitude * np.sin(2 * np.pi * frequency * elapsed_time)
-
-        new_pos = np.clip(new_pos, self.target_min, self.target_max)
-        self.target_pos = new_pos.astype(np.float32)
-
-        # 直接更新位置，不再removeBody/createMultiBody
-        if self.target_body_id is not None:
-            try:
-                p.resetBasePositionAndOrientation(self.target_body_id, self.target_pos, [0, 0, 0, 1])
-            except:
-                pass
-
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
-
-        # 在resetSimulation之前移除body，避免"Remove body failed"警告
-        if self.target_body_id is not None:
-            try:
-                p.removeBody(self.target_body_id)
-            except:
-                pass
 
         p.resetSimulation()
         p.setTimeStep(1 / 120.0)
@@ -226,11 +117,9 @@ class RobotReachEnvOptimized(gym.Env):
 
         # 领域随机化：每次reset时随机化物理参数
         if self.domain_randomization:
-            # 随机化重力（只在必要时）
             gravity_z = self.np_random.uniform(*self.gravity_range)
             p.setGravity(0, 0, gravity_z)
             
-            # 随机化关节阻尼和摩擦（一次循环完成）
             for i in range(7):
                 damping = self.np_random.uniform(*self.damping_range)
                 friction = self.np_random.uniform(*self.friction_range)
@@ -241,23 +130,10 @@ class RobotReachEnvOptimized(gym.Env):
         else:
             p.setGravity(0, 0, -9.81)
 
-        # 混合采样策略：50%薄弱区域 + 50%全范围，带可达性验证
-        if self.dynamic_target:
-            self.target_pos = self._generate_trajectory()
-        else:
-            self.target_pos = self._sample_target()
+        # 采样目标位置
+        self.target_pos = self.np_random.uniform(self.target_min, self.target_max).astype(np.float32)
 
-        # 创建目标可视化
-        vis_shape_id = p.createVisualShape(
-            p.GEOM_SPHERE, radius=0.03, rgbaColor=[1, 0, 0, 0.8]
-        )
-        self.target_body_id = p.createMultiBody(
-            baseMass=0,
-            baseVisualShapeIndex=vis_shape_id,
-            basePosition=self.target_pos
-        )
-
-        # 缩小初始关节随机范围，让机械臂从接近默认位置开始
+        # 缩小初始关节随机范围
         for i in range(7):
             p.resetJointState(
                 self.robot_id, i,
@@ -296,8 +172,6 @@ class RobotReachEnvOptimized(gym.Env):
             p.stepSimulation()
 
         self.step_count += 1
-
-        self._update_target_position()
 
         obs = self._get_obs()
         ee_pos = np.array(p.getLinkState(self.robot_id, 6)[0])
