@@ -226,24 +226,18 @@ class RobotReachEnvOptimized(gym.Env):
 
         # 领域随机化：每次reset时随机化物理参数
         if self.domain_randomization:
-            # 随机化重力
+            # 随机化重力（只在必要时）
             gravity_z = self.np_random.uniform(*self.gravity_range)
             p.setGravity(0, 0, gravity_z)
             
-            # 随机化关节阻尼
+            # 随机化关节阻尼和摩擦（一次循环完成）
             for i in range(7):
                 damping = self.np_random.uniform(*self.damping_range)
-                p.changeDynamics(self.robot_id, i, linearDamping=damping, angularDamping=damping)
-            
-            # 随机化连杆质量
-            for i in range(7):
-                mass = self.np_random.uniform(*self.mass_range)
-                p.changeDynamics(self.robot_id, i, mass=mass)
-            
-            # 随机化摩擦系数
-            for i in range(7):
                 friction = self.np_random.uniform(*self.friction_range)
-                p.changeDynamics(self.robot_id, i, lateralFriction=friction)
+                p.changeDynamics(self.robot_id, i, 
+                                linearDamping=damping, 
+                                angularDamping=damping,
+                                lateralFriction=friction)
         else:
             p.setGravity(0, 0, -9.81)
 
@@ -273,7 +267,7 @@ class RobotReachEnvOptimized(gym.Env):
         self.step_count = 0
         self.stable_count = 0
 
-        for _ in range(10):
+        for _ in range(3):
             p.stepSimulation()
 
         # 初始化上一步距离
