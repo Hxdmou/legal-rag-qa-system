@@ -64,7 +64,7 @@ if __name__ == "__main__":
     print("  FINAL TRAINING: Enhanced with Domain Randomization", flush=True)
     print("=" * 70, flush=True)
 
-    n_envs = 16
+    n_envs = 32
     total_timesteps = 5_000_000
 
     print(f"\n[CONFIG]", flush=True)
@@ -81,18 +81,18 @@ if __name__ == "__main__":
         "MlpPolicy",
         env,
         learning_rate=3e-4,
-        n_steps=2048,
-        batch_size=512,
-        n_epochs=5,
+        n_steps=4096,
+        batch_size=1024,
+        n_epochs=3,
         gamma=0.99,
         gae_lambda=0.95,
         clip_range=0.2,
-        ent_coef=0.01,
+        ent_coef=0.005,
         vf_coef=0.5,
         max_grad_norm=0.5,
         verbose=0,
         device="cpu",
-        policy_kwargs={"net_arch": [128, 128]}
+        policy_kwargs={"net_arch": [256, 256]}
     )
 
     sys.stderr = old_stderr

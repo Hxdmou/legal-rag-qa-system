@@ -59,7 +59,7 @@ class RobotReachEnvOptimized(gym.Env):
 
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         p.setGravity(0, 0, -9.81)
-        p.setTimeStep(1 / 240.0)
+        p.setTimeStep(1 / 120.0)
 
         self.robot_id = None
         self.target_pos = None
@@ -73,6 +73,11 @@ class RobotReachEnvOptimized(gym.Env):
         self.progress_reward_scale = 100.0  # 超大进度奖励
         self.survival_reward = 0.0  # 无生存惩罚
         self.sub_steps = 1  # 极致性能：最小物理步数
+        
+        # 精细奖励结构
+        self.precision_reward_scale = 50.0  # 精度奖励系数（越靠近目标奖励越高）
+        self.speed_bonus = 100.0  # 速度奖励（快速到达奖励）
+        self.direction_bonus_scale = 20.0  # 方向奖励系数
 
         # 领域随机化参数（极弱强度，确保成功率）
         self.domain_randomization = True
@@ -212,7 +217,7 @@ class RobotReachEnvOptimized(gym.Env):
                 pass
 
         p.resetSimulation()
-        p.setTimeStep(1 / 240.0)
+        p.setTimeStep(1 / 120.0)
         p.loadURDF("plane.urdf")
 
         self.robot_id = p.loadURDF(
@@ -330,7 +335,7 @@ class RobotReachEnvOptimized(gym.Env):
         ee_pos = np.array(p.getLinkState(self.robot_id, 6)[0])
         dist = np.linalg.norm(ee_pos - self.target_pos)
 
-        # Dense Reward Shaping - 基于距离变化量的纯正奖励
+        # Dense Reward Shaping - 精细奖励结构
         reward = 0.0
 
         # 1. 进度奖励：靠近目标给正奖励，远离给负奖励
@@ -341,12 +346,21 @@ class RobotReachEnvOptimized(gym.Env):
         # 更新上一步距离
         self.last_distance = dist
 
-        # 2. 到达奖励：到达目标给大奖励
+        # 2. 精度奖励：越靠近目标奖励越高（指数衰减）
+        reward += np.exp(-dist * 5) * self.precision_reward_scale
+
+        # 3. 方向奖励：如果正在朝目标移动，给予额外奖励
+        if self.last_distance is not None and dist < self.last_distance:
+            reward += self.direction_bonus_scale
+
+        # 4. 到达奖励：到达目标给大奖励
         if dist < self.reach_threshold:
             self.stable_count += 1
             reward += 50.0  # 每步保持在目标附近的奖励
             if self.stable_count >= self.stable_threshold:
                 reward += self.reach_reward  # 成功到达大奖励
+                # 速度奖励：步数越少奖励越高
+                reward += max(0, self.speed_bonus - self.step_count * 0.1)
                 terminated = True
             else:
                 terminated = False
